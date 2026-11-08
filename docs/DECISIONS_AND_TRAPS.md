@@ -3,6 +3,28 @@
 
 ## 1. Architectural Decisions & Pivot History
 
+### [DECISION: Rust-Port-Via-Tauri-V2-With-Namida-Aesthetics] | Aliases: tauri v2, rust port, namida player, pure rust vs tauri
+> **1-Line Summary:** Music Manager ports to Tauri v2 (Rust Core + Vue 3 Frontend), keeping 100% visual fidelity and Namida-style glassmorphism while eliminating Electron bloat.
+* **Decision Maker:** `[DECIDED BY: HUMAN]` (user selected Option 2A: Tauri v2)
+* **Original User Intention:** Port Music Manager to Rust for memory efficiency and speed, preserve every feature and visual aspect, and draw inspiration from the Namida music player app.
+* **Options Considered:**
+  * **Option A (Rejected):** Pure Rust GUI (Slint, Iced, egui). Rebuilding the entire UI tree in native Rust would require manually implementing hundreds of custom CSS glassmorphism, responsive lyric wrappers, LRC sync modals, and video popovers from scratch, breaking visual parity and delaying delivery.
+  * **Option B (Chosen):** Tauri v2 (Rust Core + Vue 3 WebView2). Retains the existing Vue 3 + Tailwind CSS + Naive UI frontend with 0 visual regressions, while rewriting the main process, I/O, tagging (`lofty`), `yt-dlp` orchestration, and database (SQLite) in native compiled Rust. Drops RAM from 250MB to ~45MB and binary to ~16MB.
+* **Visual Pivot Map (What Failed vs. What Works):**
+```mermaid
+flowchart LR
+    subgraph Rejected["Pure Rust GUI (Rejected)"]
+        A1[Rebuild all UI in Rust] --> A2[No CSS / No Tailwind / No WebVideo]
+        A2 --> A3[Months of UI regressions & loss of Namida styling]
+    end
+    subgraph Chosen["Tauri v2 + Rust Core (Chosen)"]
+        B1[Keep Vue 3 Frontend] --> B2[Rust handles I/O, Lofty, yt-dlp, SQLite]
+        B2 --> B3[100% Visual Parity + 45MB RAM + 16MB Portable Exe]
+    end
+```
+* **Code Anchors (Grep Targets):**
+  * `RUST_PORT_ANALYSIS.md` -> Full migration blueprint
+
 ### [DECISION: Linked-Muted-Video-With-Master-Audio] | Aliases: video mode, double audio, video stops audio keeps playing, A/V sync
 > **1-Line Summary:** Video mode plays the audio file as the only sound source while a muted video follows its clock, replacing the old pause-audio-play-video design that caused double audio and desync.
 * **Decision Maker:** `[DECIDED BY: HUMAN]` (user: "I want audio and video linked... download the video without its audio")
@@ -59,23 +81,13 @@ flowchart LR
   * `src/renderer/store/modules/playerCore.ts` -> `setIsPlay`, `handlePause`
   * `src/renderer/hooks/usePlaybackControl.ts` -> `playMusicEvent`
 
-### [DECISION: Lazy-IndexedDB-Proxy] | Aliases: white screen, top level await, startup crash
-> **1-Line Summary:** The Dexie library handle is a lazy proxy so bundled module evaluation order can never crash startup again.
+### [DECISION: Single-Bundled-FFmpeg-Binary] | Aliases: ffmpeg binary, getFfmpegPath, no ffmpeg-static
+> **1-Line Summary:** A single bundled `ffmpeg.exe` under `resources/bin/` serves every audio/video need, eliminating duplicate binaries.
 * **Decision Maker:** `[DECIDED BY: AGENT - Approved by Human]`
-* **Original User Intention:** The packaged app must never open to a white screen.
+* **Original User Intention:** No bloated distribution; one predictable ffmpeg location.
 * **Options Considered:**
-  * **Option A (Rejected):** Top-level `await useIndexedDB(...)` at module root. Bundle chunk hoisting called `musicDB` before initialization (`ReferenceError`), crashing the renderer on packaged startup.
-  * **Option B (Chosen):** Export a lazy proxy whose methods await an internal singleton, with guards for headless tests.
-* **Code Anchors (Grep Targets):**
-  * `src/renderer/hooks/IndexDBHook.ts` -> `musicDB`, `getMusicDBInstance`
-
-### [DECISION: Single-FFmpeg-Binary] | Aliases: duplicate ffmpeg, 79 MB, packaging size
-> **1-Line Summary:** Exactly one ffmpeg copy ships and one resolver points to it, cutting 79 MB from the portable.
-* **Decision Maker:** `[DECIDED BY: AGENT - Approved by Human]`
-* **Original User Intention:** A smaller portable without losing tag writing or video muxing.
-* **Options Considered:**
-  * **Option A (Rejected):** Let `tagAndMetadataManager` use the `ffmpeg-static` npm copy while `youtube.ts` used `resources/bin/ffmpeg.exe`. Two identical 79 MB binaries shipped.
-  * **Option B (Chosen):** Both callers resolve through `getFfmpegPath()` in `youtube.ts`; `ffmpeg-static` removed entirely.
+  * **Option A (Rejected):** Both `ffmpeg-static` (in `app.asar.unpacked`) and bundled `ffmpeg.exe` in `resources/bin/`, which shipped two 79 MB copies of the same binary.
+  * **Option B (Chosen):** Standardize exclusively on `resources/bin/ffmpeg.exe` via `getFfmpegPath()`.
 * **Code Anchors (Grep Targets):**
   * `src/main/modules/youtube.ts` -> `getFfmpegPath`
 
@@ -104,6 +116,20 @@ flowchart LR
 ---
 
 ## 2. Do-Not-Touch Engineering Landmines (Traps)
+
+### [TRAP: Tauri-WebView2-Background-Throttling] | Aliases: webview minimize, background pause, audio throttle
+> **1-Line Summary:** NEVER allow Windows WebView2 to suspend timers or renderer execution when minimized, or playback pauses and lyrics stall.
+* **Strict Rule:** **ALWAYS** configure WebView2 initialization flags (`--disable-background-timer-throttling`, `--disable-renderer-backgrounding`) in `tauri.conf.json`, or route master playback to native Rust audio threads.
+* **Why This Trap Exists (Plain English):** Windows Chromium webviews aggressively throttle background processing when minimized to reduce energy. In a music player, this causes audio stutter, delayed track changes, and frozen lyric timers.
+* **Protected Code Anchors (Grep Targets):**
+  * `RUST_PORT_ANALYSIS.md` -> Section 7 (Engineering Traps)
+
+### [TRAP: WebView2-Media-Codec-Boundaries] | Aliases: av1 black screen, vp9 error, webview2 codecs
+> **1-Line Summary:** NEVER assume all Windows machines can decode AV1/VP9 in WebView2 — always default linked video to MP4/H.264.
+* **Strict Rule:** **ALWAYS** prefer MP4/H.264 as the default linked video stream unless AV1 hardware decode support is probed and confirmed.
+* **Why This Trap Exists (Plain English):** WebView2 relies on Windows Media Foundation codecs. Some Windows 10/11 machines lack the Microsoft Store AV1 Video Extension, causing video elements playing AV1 streams to render a black frame.
+* **Protected Code Anchors (Grep Targets):**
+  * `src/main/modules/youtubeFormats.ts` -> `normalizeCodec`
 
 ### [TRAP: Never-Reintroduce-A-Second-FFmpeg] | Aliases: ffmpeg-static, duplicate binary, size regression
 > **1-Line Summary:** NEVER add `ffmpeg-static` or an `asarUnpack` entry for ffmpeg — it silently doubles the download by 79 MB.

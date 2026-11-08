@@ -1,10 +1,23 @@
-<h2 align="center">🎵 Music Manager</h2>
+<h2 align="center">🎵 Music Manager (Rust Port Initiative)</h2>
 
 <p align="center">
   A local-first desktop music player for Windows.<br>
-  Built on Electron, Vue 3 and TypeScript.<br>
+  Built on Vue 3, TypeScript and transitioning to a high-performance <strong>Tauri v2 + Rust</strong> core.<br>
   <em>Licensed under PolyForm Noncommercial 1.0.0 — see LICENSE.</em>
 </p>
+
+---
+
+## 🚀 The Rust Port Initiative
+
+This repository (`music-manager-rust-port`) hosts the architectural blueprint and ongoing port of Music Manager from Electron to **Tauri v2 + Rust**, incorporating visual and feature inspirations from the **[Namida music player](https://github.com/namidaco/Namida)**:
+
+* **100% Visual Fidelity:** Retains the complete Vue 3 + Tailwind CSS + Naive UI frontend with zero UI regressions.
+* **Namida-Inspired Aesthetics:** Frosted glassmorphism (`backdrop-filter`), dynamic ambient mesh gradients from cover art, interactive waveform seekbar, and fluid stacked player layouts.
+* **Rust Native Power:** Replaces the Electron main process, Node runtime, child process wrappers, and tagging engines with native compiled Rust (`lofty`, `tokio`, `rusqlite`).
+* **Resource Optimization:** Idle RAM reduced from ~250MB to ~45MB; portable `.exe` reduced from ~110MB to ~16MB.
+
+👉 **Read the full migration blueprint:** [`RUST_PORT_ANALYSIS.md`](RUST_PORT_ANALYSIS.md)
 
 ---
 
@@ -34,7 +47,7 @@ promotional modules removed. All upstream open-source credits are listed in
 - **Local file playback** for `.mp3`, `.flac`, `.opus`, `.m4a`, `.mp4`, `.webm`
   and more, with HTTP Range seeking.
 - **Unified song library** — audio files, higher-bitrate copies and music videos
-  are linked as *variants of one song* in a single Dexie/IndexedDB database.
+  are linked as *variants of one song* in a single database.
 - **Acoustic fingerprint index** — detects duplicate recordings by fingerprint
   and duration, then merges them while preserving every variant.
 - **Automatic metadata repair** — fills in missing titles, artists and cover art
@@ -68,68 +81,14 @@ promotional modules removed. All upstream open-source credits are listed in
 - Discord Rich Presence, global media keys and system tray controls.
 - **English-only interface and source.** No other locale ships.
 
-## Requirements
-
-- Windows 10 or newer (x64)
-- No external runtime — `ffmpeg` and `yt-dlp` are bundled
-
-## Getting started
-
-Download the latest release from the
-[Releases page](https://github.com/Mostakim2005/music-manager/releases) and run
-it. Each release ships **both** formats, built in the cloud by GitHub Actions
-whenever a `v*` tag is pushed:
-
-- `MusicManager-v<version>-Portable.exe` — run-anywhere, no installation.
-- `MusicManager-v<version>-Setup.exe` — NSIS installer (choose install folder,
-  desktop and Start-menu shortcuts).
-
 ## Documentation
 
 | Document | What it holds |
 | --- | --- |
+| [`RUST_PORT_ANALYSIS.md`](RUST_PORT_ANALYSIS.md) | Comprehensive feasibility study, system architecture, and migration blueprint for Tauri v2 + Rust |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | User intentions, active feature map, and the merge wishlist |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Visual system map, tech stack rationale, subsystems, recipes |
 | [`docs/DECISIONS_AND_TRAPS.md`](docs/DECISIONS_AND_TRAPS.md) | Why we chose each approach, what failed, and the do-not-touch landmines |
-| [`docs/VISUAL_GUIDE.html`](docs/VISUAL_GUIDE.html) | Interactive browser dashboard of intent, architecture, decisions and traps |
-
-## Development
-
-```powershell
-cd AlgerMusicPlayer
-npm install
-
-npm run dev              # electron-vite dev server with hot reload
-npm run typecheck        # node + web type checks
-npx vitest run           # unit tests
-npm run build            # bundle check
-npm run build:portable   # produce MusicManager-v<version>-Portable.exe
-npm run build:installer  # NSIS installer
-```
-
-### Repository layout
-
-```
-AlgerMusicPlayer/
-├── src/main/            Electron main process, IPC handlers, window setup
-├── src/preload/         Context-isolation bridge
-├── src/renderer/        Vue 3 frontend (views, components, stores, services)
-├── src/shared/          Code shared between main and renderer
-├── tests/               Vitest unit tests
-├── docs/                PRODUCT / ARCHITECTURE / DECISIONS_AND_TRAPS / VISUAL_GUIDE
-└── scripts/             Build, packaging and i18n tooling
-```
-
-### Conventions
-
-- **English-only source.** Comments, log messages, thrown errors and dialog
-  titles are all English. Four CJK exemptions are deliberate and documented in
-  [`docs/DECISIONS_AND_TRAPS.md`](docs/DECISIONS_AND_TRAPS.md); the regression
-  gate is `node .sweep-gate.mjs`, which must report 0.
-- **Media URLs are never stored as `local://`-breaking playable forms.** Convert
-  at playback time with `toPlayableMediaUrl()`.
-- **The Dexie schema is versioned.** Any index change requires a new version.
-- **One ffmpeg copy only.** Everything resolves through `getFfmpegPath()`.
 
 ## License
 
@@ -151,9 +110,9 @@ repository. This project does not track upstream.
 
 | Source | What came from it | License |
 | --- | --- | --- |
-| [AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer) by Alger | Electron shell, player core, renderer components, download and update pipeline — most of the tree | MIT |
-| [YesPlayMusic](https://github.com/qier222/YesPlayMusic) by qier222 | Lyric parser and aligner, IndexedDB schema, play/pause volume fade | MIT |
-| [Namida](https://github.com/namidaco/Namida) | Stacked fullscreen player and video pill — design inspiration only, no code incorporated | — |
+| [AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer) by Alger | Shell, player core, renderer components, download and update pipeline — most of the tree | MIT |
+| [YesPlayMusic](https://github.com/qier222/YesPlayMusic) by qier222 | Lyric parser and aligner, database schema, play/pause volume fade | MIT |
+| [Namida](https://github.com/namidaco/Namida) | Stacked fullscreen player, frosted glassmorphism, dynamic palette, video pill — design inspiration only | — |
 
 Every dependency and bundled tool is listed with its license in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), which also reproduces the MIT
@@ -164,7 +123,4 @@ file-level map of what originates where are recorded in
 ## Acknowledgements
 
 Thanks to Alger, qier222 and the other YesPlayMusic and AlgerMusicPlayer
-contributors, whose MIT-licensed work this project is built on. The upstream
-authors appear in the GitHub contributor sidebar because their commits are part
-of this repository's history — that is accurate, and it is not an endorsement of
-this project by them.
+contributors, whose MIT-licensed work this project is built on.

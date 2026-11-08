@@ -4,6 +4,7 @@
 ## 1. Core Vision & User Experience Intent
 * **What This App Does (Plain English):** Music Manager is a local-first Windows desktop music player. It plays your own audio files and their linked music videos as one song, with synced lyrics, one queue, and no account or cloud library. Bundled `yt-dlp` + `ffmpeg` find and store video/audio; everything matches to a single song identity built from artist and title.
 * **How It Must Feel to Use:** Instant local playback; audio, video, lyrics and the progress bar always share one clock and never disagree; no double audio ever; clean light and dark themes with strong contrast; fully usable offline for local files.
+* **Rust & Namida Evolution:** Transitioning from Electron to a high-performance Tauri v2 + Rust foundation while deepening Namida-inspired fluid visuals (frosted glassmorphism, dynamic ambient mesh gradients, interactive waveform seekbar, and stacked layout).
 
 ## 2. Active Features (Do Not Break)
 
@@ -129,6 +130,11 @@
   * `src/renderer/services/listeningStatsService.ts` -> `addListeningSeconds`, `recordTrackPlay`
 
 ## 3. Planned Features & App-Merge Wishlist
+
+### [WISHLIST: Rust-Tauri-V2-Migration] | Aliases: rust port, tauri v2, namida player, memory reduction, portable binary
+> **1-Line Summary:** Port Music Manager to Tauri v2 and Rust, slashing idle RAM from ~250MB to ~45MB and portable exe to ~16MB while retaining 100% Vue 3 UI and Namida aesthetics.
+* **User Intention:** Ultra-fast, lightweight Windows desktop player with native Rust performance and zero visual regressions.
+* **Target Integration Point:** `RUST_PORT_ANALYSIS.md` -> Full phased blueprint.
 
 ### [WISHLIST: Cloud-Built-Releases] | Aliases: github actions, cloud build, releases, tag build, portable and installer
 > **1-Line Summary:** Version tags trigger a GitHub Actions build that attaches both the portable `.exe` and the NSIS installer to the release, instead of storing builds locally.

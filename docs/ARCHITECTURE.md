@@ -1,56 +1,81 @@
 # System Architecture (`ARCHITECTURE.md`)
-> **1-Line Summary:** Plain-English visual map of how the app works, why we chose each tool, and step-by-step recipes for adding new features.
+> **1-Line Summary:** Plain-English visual map of how the app works, why we chose each tool, migration to Rust (Tauri v2), and step-by-step recipes for adding new features.
 
 ## 1. High-Level Visual System Map
 ```mermaid
 flowchart TB
-    subgraph UI["Renderer (Vue 3)"]
-        PB[PlayBar / Mini Bars]
-        MF[Fullscreen Player MusicFull]
+    subgraph UI["Renderer (Vue 3 + Tailwind + Naive UI)"]
+        PB[PlayBar & Control Strip]
+        MF[Fullscreen Player & Namida Stacked Layout]
         LM[Local Music & Track Editor]
         VSP[Video Source & Save Dialogs]
+        LRC_MOD[LRC Synchronizer Modal]
     end
-    subgraph STATE["State & Services"]
+    subgraph STATE["State & Reactive Services"]
         PC[playerCore / playlist stores]
         AS[audioService - master clock & only sound]
         VC[playbackController]
         MC[mediaCoordinator - exclusivity]
-        SL[songLibrary - Dexie variants]
+        SL[songLibrary - local variants]
         LRC[MusicHook lyric pipeline]
     end
-    subgraph MAIN["Electron Main Process"]
-        YT[youtube.ts - yt-dlp + ffmpeg]
-        TAG[tagAndMetadataManager - tags & lyrics]
-        FM[fileManager / cache / local protocol]
-        EXT[tray, MPRIS, Discord, media keys]
+    subgraph CORE["Backend Engine (Electron Main -> Migrating to Rust / Tauri v2)"]
+        YT[YouTube Engine: Tokio Async yt-dlp + ffmpeg]
+        TAG[Tag & Metadata Engine: Lofty Crate]
+        SCAN[Parallel Directory Scanner: Rayon + Walkdir]
+        DB[Embedded SQLite Database: library.db via SQLx]
+        EXT[SMTC Media Keys, Tray, Single Instance]
     end
-    subgraph DISK["Disk"]
+    subgraph DISK["Disk & Media Storage"]
         FILES[Music files & video variants]
         BIN[resources/bin: yt-dlp.exe, ffmpeg.exe]
+        DB_STORE[AppData/Local/MusicManager/library.db]
     end
     UI --> STATE
-    STATE -->|IPC| MAIN
-    MAIN --> DISK
+    STATE -->|Tauri IPC / IPC Bridge| CORE
+    CORE --> DISK
     MF -.muted video follows audio.-> AS
     VSP --> YT
     LRC --> TAG
+    SL --> DB
 ```
 
 ## 2. Tech Stack & Why We Chose It
 
 | Layer | Tool / Library | Plain-English Reason Why |
 | --- | --- | --- |
-| Desktop shell | Electron | Windows-native window, media keys, tray, and local file access while keeping one web codebase. |
-| Frontend | Vue 3 + Vite + TypeScript | Reactive UI with fast builds; strict types catch breakage before the GUI can be tested. |
-| Component kit | Naive UI + Tailwind + Sass | Polished dark/light theming with utility styling for proportional spacing. |
+| Desktop shell | Electron (Target: Tauri v2) | Windows-native window, media keys, tray, and local file access; Tauri v2 eliminates Chromium bloat, reducing RAM to ~45MB and binary to ~16MB. |
+| Frontend | Vue 3 + Vite + TypeScript | Reactive UI with fast builds; strict types catch breakage before the GUI can be tested; retains 100% visual fidelity and Namida styling. |
+| Component kit | Naive UI + Tailwind + Sass | Polished dark/light theming with utility styling for proportional spacing and frosted glassmorphism. |
 | State | Pinia (+ persisted state) | One predictable store layer that survives restarts. |
-| Local library | Dexie / IndexedDB | Fast offline song/variant database with versioned schema. |
+| Local library | Dexie / IndexedDB (Target: SQLite) | Fast offline song/variant database; moving to embedded SQLite via SQLx/Rusqlite for robustness and zero quota eviction risks. |
 | Audio engine | HTMLAudioElement + WebAudio | Gapless seeking with EQ/crossfade; one persistent element keeps one clock. |
-| Media tools | Bundled `yt-dlp` + `ffmpeg` | No external installs; video search/download and tag writing work out of the box. |
-| Tagging | node-id3, flac-tagger, music-metadata | Native ID3v2/Vorbis/MP4 tag reading and writing per format. |
-| Theming | node-vibrant | Pulls palette colors from album art for the dynamic gradient. |
+| Media tools | Bundled `yt-dlp` + `ffmpeg` | No external installs; video search/download and tag writing orchestrated via Tokio async processes in Rust. |
+| Tagging | node-id3, flac-tagger (Target: Lofty) | Native ID3v2/Vorbis/MP4 tag reading and writing; moving to Rust `lofty` crate for 15x faster multi-format tagging. |
+| Theming | node-vibrant / Rust color quantizer | Pulls palette colors from album art for Namida-style dynamic ambient gradients. |
 
 ## 3. Core Subsystems & Engineering Tricks
+
+### [SUBSYSTEM: Rust-Tauri-V2-Port-Architecture] | Aliases: tauri, rust port, webview2, lofty, tokio process
+> **1-Line Summary:** Tauri v2 hosts the Vue 3 frontend in Windows WebView2 while Rust runs all I/O, tagging, process execution, and SQLite storage natively.
+* **How It Works (Plain English):** The frontend talks to Rust through strongly-typed `tauri::command` handlers and event streams (`tauri::ipc::Channel`). `yt-dlp` runs as an asynchronous child process under `tokio::process::Command`. File tagging is handled by the `lofty` crate, and data is stored in a local SQLite file in `%LOCALAPPDATA%`.
+* **Data Flow Diagram:**
+```mermaid
+sequenceDiagram
+    participant UI as Vue 3 Frontend
+    participant IPC as Tauri v2 IPC Bridge
+    participant RUST as Rust Core (tokio)
+    participant EXT as yt-dlp / Lofty / SQLite
+    UI->>IPC: invoke('fetch_youtube_formats', { url })
+    IPC->>RUST: Async command dispatch
+    RUST->>EXT: tokio::process::Command("yt-dlp", ["-J", ...])
+    EXT-->>RUST: stdout JSON stream
+    RUST-->>IPC: serde_json typed struct
+    IPC-->>UI: Reactive format tree
+```
+* **Code Anchors (Grep Targets):**
+  * `RUST_PORT_ANALYSIS.md` -> Complete architectural blueprint
+  * `src-tauri/src/main.rs` -> Tauri application entrypoint
 
 ### [SUBSYSTEM: Linked-AV-Playback-Engine] | Aliases: video mode, muted video, shared clock, audio master
 > **1-Line Summary:** The audio element is always the master clock and only sound source; the video is muted and follows it, so the two can never drift apart audibly.
@@ -107,14 +132,14 @@ sequenceDiagram
   * `src/renderer/components/lyric/MusicFull.vue` -> `handleApplyEditedLrc`, `lineTimeLabel`
 
 ### [SUBSYSTEM: Unified-Song-Library] | Aliases: variants, dexie, fingerprint, duplicates, song identity
-> **1-Line Summary:** One Dexie database links every audio/video/lyrics file to a single song record using artist|title identity plus fingerprint matching.
+> **1-Line Summary:** One database links every audio/video/lyrics file to a single song record using artist|title identity plus fingerprint matching.
 * **How It Works (Plain English):** Ingestion matches by path, YouTube ID, fingerprint, normalized `artist|title` key with ±3s duration, then fuzzy token similarity. Variants record codec, height, bitrate and size so the Files tab can manage each one independently (unlink keeps the file, delete removes it).
 * **Code Anchors (Grep Targets):**
   * `src/renderer/services/songLibrary.ts` -> `computeNormKey`, `ingestLocalTrack`, `linkVariant`, `getVariants`, `findSongByPath`, `getSongKey`
 
 ### [SUBSYSTEM: Tag-Metadata-And-Lyric-IO] | Aliases: tags, artwork, rename, lrclib, metadata fetch
-> **1-Line Summary:** The main process writes native tags and sidecar lyrics per format and fetches metadata/lyrics from iTunes, MusicBrainz and LRCLIB.
-* **How It Works (Plain English):** `node-id3` handles MP3, `flac-tagger` FLAC, and ffmpeg the iTunes atoms for m4a/mp4/opus/ogg/wav. Lyric search returns candidates with duration and offset metadata so the picker can prefer the closest version.
+> **1-Line Summary:** The backend writes native tags and sidecar lyrics per format and fetches metadata/lyrics from iTunes, MusicBrainz and LRCLIB.
+* **How It Works (Plain English):** `node-id3` handles MP3, `flac-tagger` FLAC, and ffmpeg the iTunes atoms for m4a/mp4/opus/ogg/wav (migrating to unified Rust `lofty` crate). Lyric search returns candidates with duration and offset metadata so the picker can prefer the closest version.
 * **Code Anchors (Grep Targets):**
   * `src/main/modules/tagAndMetadataManager.ts` -> `fetchFromITunes`, `fetchFromMusicBrainz`, `lrcTimeBounds`, `local-music:update-tags-and-file`
 
@@ -142,10 +167,10 @@ sequenceDiagram
   1. Edit `src/main/modules/youtubeFormats.ts` -> `mapAndGroupFormats` and the `YtVideoFormat` interface.
   2. Surface it in `src/renderer/utils/videoQualityHelpers.ts` -> `formatQualityRow`.
   3. Render it in `src/renderer/components/player/VideoSourcePopover.vue` -> quality row template.
-* **To add a new main-process capability:**
-  1. Create a module under `src/main/modules/` and register `ipcMain.handle('domain:action', ...)` in its initializer.
-  2. Expose it in `src/preload/index.ts` -> the `window.api` bridge (keep it optional-chained in tests).
-  3. Call it from a renderer service; never touch `fs` from the renderer.
+* **To add a new main-process / Rust IPC capability:**
+  1. Register `#[tauri::command]` in Rust (or `ipcMain.handle` in legacy Electron).
+  2. Expose it in the bridge client (`window.api` / `@tauri-apps/api/core`).
+  3. Call it from a renderer service; never perform raw disk I/O directly in UI components.
 * **To add a player control or toggle:**
   1. Add state/action in `src/renderer/store/modules/playerCore.ts` and re-export it in `src/renderer/store/modules/player.ts`.
   2. Route button clicks through `src/renderer/hooks/usePlaybackControl.ts` so the play state stays single-sourced.
