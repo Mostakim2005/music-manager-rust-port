@@ -44,7 +44,9 @@ jobs:
           }
 
       - name: Install Frontend Dependencies
-        run: npm install
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm install --ignore-scripts
 
       - name: Verify Types and Tests
         run: |
@@ -121,9 +123,10 @@ jobs:
 
       - name: Install Frontend Dependencies & Build Android APK
         env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
         run: |
-          npm install
+          npm install --ignore-scripts
           npx @tauri-apps/cli android init --ci
           npx @tauri-apps/cli android build --apk true
 
