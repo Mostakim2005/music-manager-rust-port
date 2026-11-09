@@ -144,10 +144,14 @@
 
 ## 3. Planned Features & App-Merge Wishlist
 
-### [WISHLIST: Cloud-Built-Releases] | Aliases: github actions, cloud build, releases, tag build, portable and installer
-> **1-Line Summary:** Version tags trigger a GitHub Actions build that attaches both the portable `.exe` and the NSIS installer to the release, instead of storing builds locally.
-* **User Intention:** Keep GitHub as the single source of truth; no heavy binaries in git history; every release offers both formats.
-* **Target Integration Point:** `.github/workflows/build.yml` → `build:portable` + `build:installer`.
+### [FEATURE: Cloud-Built-Releases-Windows-And-Android] | Aliases: github actions, cloud build, releases, tag build, portable and installer, android apk
+> **1-Line Summary:** Version tags and automated GitHub Actions pipelines build and attach Windows Portable `.zip`, NSIS Setup `.exe`, and Android Universal `.apk` releases to GitHub Releases.
+* **Status:** **Completed & Active in Release v2.0.0** ([Release Assets](https://github.com/Mostakim2005/music-manager-rust-port/releases/tag/v2.0.0)).
+* **User Intention:** Keep GitHub as the single source of truth; zero heavy binaries in git history; provide instant downloads for Windows (portable & setup) and Android (universal release APK).
+* **Target Integration Point:**
+  * `.github/workflows/release.yml` -> Windows NSIS setup installer + Portable bundle (bundled with `yt-dlp` and `ffmpeg`).
+  * `.github/workflows/android.yml` -> Android universal APK with automated zipalign and apksigner v2+v3 signing.
+  * Live Release: `https://github.com/Mostakim2005/music-manager-rust-port/releases/tag/v2.0.0`
 
 ### [WISHLIST: Desktop-GUI-Verification] | Aliases: manual checklist, real desktop test, gui check
 > **1-Line Summary:** Run the manual desktop verification checklist against a fresh portable build, since the agent sandbox cannot launch the GUI.

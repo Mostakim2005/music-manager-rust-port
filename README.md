@@ -1,10 +1,20 @@
 <h2 align="center">🎵 Music Manager (Rust Port Initiative)</h2>
 
 <p align="center">
-  A local-first desktop music player for Windows.<br>
-  Built on Vue 3, TypeScript and transitioning to a high-performance <strong>Tauri v2 + Rust</strong> core.<br>
+  A local-first desktop and mobile music player.<br>
+  Built on Vue 3, TypeScript and high-performance <strong>Tauri v2 + Rust</strong> core.<br>
   <em>Licensed under PolyForm Noncommercial 1.0.0 — see LICENSE.</em>
 </p>
+
+<p align="center">
+  <a href="https://github.com/Mostakim2005/music-manager-rust-port/releases/tag/v2.0.0"><strong>📦 Download Official Release v2.0.0</strong></a>
+</p>
+
+| Platform | Format | Direct Download | Notes |
+| --- | --- | --- | --- |
+| **Windows 10/11 x64** | **NSIS Installer** | [Music.Manager_2.0.0_x64-setup.exe](https://github.com/Mostakim2005/music-manager-rust-port/releases/download/v2.0.0/Music.Manager_2.0.0_x64-setup.exe) | Standard Windows desktop setup wizard |
+| **Windows 10/11 x64** | **Portable Zip** | [MusicManager-v2.0.0-Windows-Portable.zip](https://github.com/Mostakim2005/music-manager-rust-port/releases/download/v2.0.0/MusicManager-v2.0.0-Windows-Portable.zip) | Portable zero-install bundle with `yt-dlp` & `ffmpeg` |
+| **Android 7.0+** | **Universal APK** | [MusicManager-v2.0.0-Android-Universal.apk](https://github.com/Mostakim2005/music-manager-rust-port/releases/download/v2.0.0/MusicManager-v2.0.0-Android-Universal.apk) | Signed APK (v2+v3) with `aarch64`, `armv7`, `x86_64` |
 
 ---
 

@@ -2,6 +2,8 @@ node_modules
 .DS_Store
 
 dist
+dist-apk
+*.apk
 releases
 dist-ssr
 *.local

@@ -260,3 +260,17 @@ flowchart LR
 * **Protected Code Anchors (Grep Targets):**
   * `.gitignore` -> `src-tauri/bin/`, `src-tauri/target/`
   * `.github/workflows/build-release.yml` -> `Fetch Windows Sidecars`
+
+### [TRAP: Android-Gradle-CDN-Timeout-Resilience] | Aliases: gradle 504, maven timeout, wrapper timeout, android build cdn
+> **1-Line Summary:** NEVER run single-attempt gradle commands in CI without connection timeouts and retry properties configured.
+* **Strict Rule:** Always configure `systemProp.org.gradle.internal.repository.max.retries=10`, `systemProp.org.gradle.internal.http.socketTimeout=120000`, and a retry loop for gradle wrapper tasks.
+* **Why This Trap Exists (Plain English):** `services.gradle.org` and JetBrains Maven releases redirect to GitHub asset CDN, which periodically returns transient 504 Gateway Time-out errors to single-attempt CI runners. Pre-warming with `./gradlew tasks --dry-run` and retries prevents false CI failures.
+* **Protected Code Anchors (Grep Targets):**
+  * `.github/workflows/android.yml` -> `Configure Gradle Retries and Network Timeouts`
+
+### [TRAP: Android-APK-Signing-Scheme-V2-Requirement] | Aliases: unsigned apk, no certificates, parse error, apksigner v2 v3
+> **1-Line Summary:** NEVER distribute unsigned or v1-only APKs targeting Android 11+ (API 30+), or Android package installers reject them.
+* **Strict Rule:** Always run `zipalign -v -p 4` followed by `apksigner sign --ks ...` (or `uber-apk-signer`) verifying v2 and v3 signatures before attaching APKs to releases.
+* **Why This Trap Exists (Plain English):** Android 11+ strictly enforces APK Signature Scheme v2 for apps targeting API 30+. An unsigned release APK fails tap-to-install on Android with `INSTALL_PARSE_FAILED_NO_CERTIFICATES` ("App not installed: The package appears to be corrupt").
+* **Protected Code Anchors (Grep Targets):**
+  * `.github/workflows/android.yml` -> `Align and Sign Release APK`
