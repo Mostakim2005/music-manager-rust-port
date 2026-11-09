@@ -1239,6 +1239,14 @@ class AudioService {
     return this.audio.src ? this.audio : null;
   }
 
+  getAudioElement(): HTMLAudioElement {
+    return this.audio;
+  }
+
+  _unusedOldCurrentSound(): HTMLAudioElement | null {
+    return this.audio.src ? this.audio : null;
+  }
+
   getCurrentTrack(): SongResult | null {
     return this.currentTrack;
   }

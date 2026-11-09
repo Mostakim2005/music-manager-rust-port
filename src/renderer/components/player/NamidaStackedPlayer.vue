@@ -98,28 +98,13 @@
 
     <!-- Full-Width Waveform Visualizer (Min Height 56px) -->
     <div class="waveform-section w-full px-2 space-y-1">
-      <div
-        ref="waveformContainerRef"
-        class="waveform-visualizer relative w-full h-14 sm:h-16 flex items-end gap-[2px] cursor-pointer rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-2 py-1 select-none"
-        @click="handleWaveformClick"
-        @mousemove="handleWaveformHover"
-        @mouseleave="hoverProgress = null"
-      >
-        <span
-          v-for="(barH, idx) in displayBars"
-          :key="idx"
-          class="waveform-bar flex-1 rounded-t-sm transition-all duration-150"
-          :class="idx / displayBars.length <= currentRatio ? 'bg-emerald-500' : 'bg-white/20'"
-          :style="{ height: `${Math.max(12, barH)}%` }"
-        ></span>
-
-        <!-- Hover preview line -->
-        <div
-          v-if="hoverProgress !== null"
-          class="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none z-10"
-          :style="{ left: `${hoverProgress * 100}%` }"
-        ></div>
-      </div>
+      <NamidaWaveformSeekbar
+        :file-path="(song as any)?.localPath || (song as any)?.path || ''"
+        :current-time="currentTime"
+        :duration="duration"
+        :accent-color="'#10b981'"
+        @seek="$emit('seek', $event)"
+      />
 
       <!-- Time Labels (Tabular numbers) -->
       <div
@@ -193,6 +178,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import type { SongResult } from '@/types/music';
 import { getImgUrl } from '@/utils';
 import { formatVideoTime } from '@/utils/videoQualityHelpers';
+import NamidaWaveformSeekbar from '@/components/namida/NamidaWaveformSeekbar.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -238,8 +224,6 @@ const emit = defineEmits<{
 }>();
 
 const videoElRef = ref<HTMLVideoElement | null>(null);
-const waveformContainerRef = ref<HTMLDivElement | null>(null);
-const hoverProgress = ref<number | null>(null);
 
 watch(videoElRef, (el) => {
   emit('videoRef', el);
@@ -283,39 +267,6 @@ const nextLyricText = computed(() => {
   return props.nextLyricLine?.text || '';
 });
 
-const currentRatio = computed(() => {
-  if (!props.duration || props.duration <= 0) return 0;
-  return Math.min(1, Math.max(0, props.currentTime / props.duration));
-});
-
-// Waveform bars with default pseudo heights if not provided
-const displayBars = computed(() => {
-  if (props.waveformBars && props.waveformBars.length > 20) {
-    return props.waveformBars;
-  }
-  // Generate a consistent pseudo-random waveform pattern from song ID
-  const count = 48;
-  const bars: number[] = [];
-  const seed = (props.song?.id ? Number(props.song.id) : 42) || 42;
-  for (let i = 0; i < count; i++) {
-    const v = Math.abs(Math.sin((i + 1) * seed * 0.17) * 75) + 20;
-    bars.push(Math.round(v));
-  }
-  return bars;
-});
-
-const handleWaveformClick = (e: MouseEvent) => {
-  if (!waveformContainerRef.value || !props.duration) return;
-  const rect = waveformContainerRef.value.getBoundingClientRect();
-  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  emit('seek', ratio * props.duration);
-};
-
-const handleWaveformHover = (e: MouseEvent) => {
-  if (!waveformContainerRef.value) return;
-  const rect = waveformContainerRef.value.getBoundingClientRect();
-  hoverProgress.value = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-};
 </script>
 
 <style scoped>

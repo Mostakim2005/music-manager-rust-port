@@ -14,6 +14,11 @@
       class="background-layer"
       :style="backgroundImageStyle"
     ></div>
+        <NamidaAmbientCanvas
+      v-if="!config.useCustomBackground || config.backgroundMode !== 'solid'"
+      :palette="ambientPalette"
+      :is-playing="playerStore.isPlay"
+    />
     <div id="drawer-target" :class="[config.theme]" class="relative z-10">
       <div
         class="control-left absolute top-8 left-8 z-[9999] flex items-center gap-2"
@@ -587,6 +592,8 @@ import { DEFAULT_LYRIC_CONFIG, LyricConfig } from '@/types/lyric';
 import type { ILyricText } from '@/types/music';
 import { getImgUrl, isElectron, isMobile } from '@/utils';
 import { getTextColors } from '@/utils/linearColor';
+import NamidaAmbientCanvas from '@/components/namida/NamidaAmbientCanvas.vue';
+import { useLinkedMediaSync } from '@/composables/useLinkedMediaSync';
 import { filePathToMediaUrl } from '@/utils/localMediaUrl';
 import { LYRIC_CONFIG_CHANGE_EVENT, readLyricConfig, writeLyricConfig } from '@/utils/lyricConfig';
 import { formatLrcTimestamp, formatLrcTimestampMs } from '@/utils/lyrics';
@@ -1244,9 +1251,37 @@ const rawLrcString = computed(() => {
 // deliberately NOT registered with the media coordinator — a muted video is
 // not an audible surface and must never claim playback exclusivity from the
 // audio element it is linked to.
+
+const ambientPalette = computed<string[]>(() => {
+  const p = (playMusic.value as any)?.paletteHex;
+  if (Array.isArray(p) && p.length > 0) return p;
+  const primary = (playMusic.value as any)?.primaryColor;
+  const bg = (playMusic.value as any)?.backgroundColor;
+  if (primary && bg) return [primary, bg, '#6366f1', '#1e1b4b'];
+  return ['#6366f1', '#8b5cf6', '#ec4899', '#1e1b4b'];
+});
+
+const { enforceSyncTick, startSyncLoop, stopSyncLoop } = useLinkedMediaSync(
+  () => audioService.getAudioElement(),
+  () => activeVideoElement.value
+);
+
+watch(
+  () => [playerStore.playbackMode, activeVideoSrc.value],
+  ([mode, src]) => {
+    if (mode === 'video' && src) {
+      startSyncLoop();
+    } else {
+      stopSyncLoop();
+    }
+  },
+  { immediate: true }
+);
+
 const syncVideoSlaveState = () => {
   const el = activeVideoElement.value;
   if (!el || playerStore.playbackMode !== 'video' || !activeVideoSrc.value) return;
+  enforceSyncTick();
   el.muted = true;
   const owner = currentMediaOwner.value;
   const yielded = Boolean(owner && owner !== 'audioService');
