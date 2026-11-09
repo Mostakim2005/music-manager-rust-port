@@ -17,7 +17,8 @@ This repository (`music-manager-rust-port`) hosts the architectural blueprint an
 * **Rust Native Power:** Replaces the Electron main process, Node runtime, child process wrappers, and tagging engines with native compiled Rust (`lofty`, `tokio`, `rusqlite`).
 * **Resource Optimization:** Idle RAM reduced from ~250MB to ~45MB; portable `.exe` reduced from ~110MB to ~16MB.
 
-👉 **Read the full migration blueprint:** [`RUST_PORT_ANALYSIS.md`](RUST_PORT_ANALYSIS.md)
+👉 **Read the full migration blueprint:** [`RUST_PORT_ANALYSIS.md`](RUST_PORT_ANALYSIS.md)  
+👉 **Read the deep technical audit & Android strategy:** [`docs/PORTING_SPECIFICATION_QA.md`](docs/PORTING_SPECIFICATION_QA.md)
 
 ---
 
@@ -86,6 +87,7 @@ promotional modules removed. All upstream open-source credits are listed in
 | Document | What it holds |
 | --- | --- |
 | [`RUST_PORT_ANALYSIS.md`](RUST_PORT_ANALYSIS.md) | Comprehensive feasibility study, system architecture, and migration blueprint for Tauri v2 + Rust |
+| [`docs/PORTING_SPECIFICATION_QA.md`](docs/PORTING_SPECIFICATION_QA.md) | Technical audit of Preload IPC, main modules, Dexie schemas, streaming, and Android strategy |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | User intentions, active feature map, and the merge wishlist |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Visual system map, tech stack rationale, subsystems, recipes |
 | [`docs/DECISIONS_AND_TRAPS.md`](docs/DECISIONS_AND_TRAPS.md) | Why we chose each approach, what failed, and the do-not-touch landmines |

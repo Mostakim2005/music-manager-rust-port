@@ -24,6 +24,30 @@ flowchart LR
 ```
 * **Code Anchors (Grep Targets):**
   * `RUST_PORT_ANALYSIS.md` -> Full migration blueprint
+  * `docs/PORTING_SPECIFICATION_QA.md` -> Deep technical audit and Android strategy
+
+### [DECISION: Android-YouTube-Pure-Rust-Extractor-Architecture] | Aliases: android youtube, rusty_ytdl, no python on android, android streaming
+> **1-Line Summary:** Android uses a pure-Rust extractor (`rusty_ytdl`) and direct HTTP streaming instead of `youtubedl-android` / Python, avoiding 50MB of APK bloat while preserving linked A/V playback and downloads.
+* **Decision Maker:** `[DECIDED BY: AGENT - Approved by Human]`
+* **Original User Intention:** Enable YouTube streaming and video/audio downloads on Android without breaking the lightweight, native-first architecture.
+* **Options Considered:**
+  * **Option A (Rejected):** `youtubedl-android` (Python + FFmpeg embedded wrapper). Adds 50MB of APK bloat, suffers high memory overhead, and requires complex native build chains for multiple Android ABIs.
+  * **Option B (Rejected):** Keep YouTube downloads Windows-only and disable or limit Android to local playback. Severely degrades mobile feature parity.
+  * **Option C (Chosen):** Pure-Rust extractor (`rusty_ytdl` or InnerTube client via `reqwest`) compiled directly into the Tauri Android shared library (`.so`). Because Music Manager enforces linked muted video with master audio, streams are never merged and FFmpeg is not required on Android. Downloads are handled via direct HTTP range streaming in Rust.
+* **Visual Pivot Map (What Failed vs. What Works):**
+```mermaid
+flowchart LR
+    subgraph Rejected["youtubedl-android (Rejected)"]
+        A1[Embedded Python Runtime] --> A2[+50 MB APK bloat]
+        A2 --> A3[High battery / ABI build complexity]
+    end
+    subgraph Chosen["Pure Rust Extraction (Chosen)"]
+        B1[rusty_ytdl in Rust Core] --> B2[< 1.5 MB NDK library]
+        B2 --> B3[Native Speed + Direct HTTP Downloads + 0 Python Bloat]
+    end
+```
+* **Code Anchors (Grep Targets):**
+  * `docs/PORTING_SPECIFICATION_QA.md` -> Section 4 (YouTube on Android Strategy)
 
 ### [DECISION: Linked-Muted-Video-With-Master-Audio] | Aliases: video mode, double audio, video stops audio keeps playing, A/V sync
 > **1-Line Summary:** Video mode plays the audio file as the only sound source while a muted video follows its clock, replacing the old pause-audio-play-video design that caused double audio and desync.
@@ -116,6 +140,13 @@ flowchart LR
 ---
 
 ## 2. Do-Not-Touch Engineering Landmines (Traps)
+
+### [TRAP: Android-SELinux-NoExec-Sidecars] | Aliases: android sidecars fail, permission denied, execvp failed
+> **1-Line Summary:** NEVER attempt to bundle or spawn standalone CLI binaries on Android data partitions — Android 10+ SELinux blocks execution with `EACCES`.
+* **Strict Rule:** All Android native functionality must be compiled as native Rust functions inside the shared library (`.so`) linked via JNI, never spawned as child processes.
+* **Why This Trap Exists (Plain English):** Android 10+ enforces W^X memory and blocks executing files from writable app storage (`/data/data/<pkg>/`). Spawning `yt-dlp` or `ffmpeg` binaries at runtime throws `Permission Denied`.
+* **Protected Code Anchors (Grep Targets):**
+  * `docs/PORTING_SPECIFICATION_QA.md` -> Section 4 (YouTube on Android Strategy)
 
 ### [TRAP: Tauri-WebView2-Background-Throttling] | Aliases: webview minimize, background pause, audio throttle
 > **1-Line Summary:** NEVER allow Windows WebView2 to suspend timers or renderer execution when minimized, or playback pauses and lyrics stall.
