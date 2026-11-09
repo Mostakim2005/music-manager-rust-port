@@ -39,6 +39,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Window controls & shell
             commands::window_shell::window_minimize,
             commands::window_shell::window_maximize,
             commands::window_shell::is_window_maximized,
@@ -51,6 +52,22 @@ pub fn run() {
             commands::window_shell::restore_window,
             commands::window_shell::delete_variant_file,
             commands::window_shell::get_system_fonts,
+
+            // Local media scanner, tag editor, fingerprinting & waveform
+            commands::scanner_tags::scan_local_music_with_stats,
+            commands::scanner_tags::scan_local_music,
+            commands::scanner_tags::parse_local_music_metadata,
+            commands::scanner_tags::update_local_music_tags_and_file,
+            commands::scanner_tags::save_synced_lyrics,
+            commands::scanner_tags::get_embedded_lyrics,
+            commands::scanner_tags::save_lyric_file,
+            commands::scanner_tags::get_audio_fingerprint,
+            commands::scanner_tags::generate_waveform_peaks,
+            commands::scanner_tags::extract_image_palette,
+            commands::scanner_tags::export_m3u8,
+            commands::scanner_tags::import_m3u8,
+            commands::scanner_tags::export_backup_json,
+            commands::scanner_tags::import_backup_json,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Music Manager Tauri application");

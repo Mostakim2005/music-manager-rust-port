@@ -63,6 +63,8 @@ const CHANNEL_TO_RUST_COMMAND: Record<string, string> = {
   'lx-music-http-request': 'lx_music_http_request',
   'lx-music-http-cancel': 'lx_music_http_cancel',
   'save-lyric-file': 'save_lyric_file',
+  'generate-waveform-peaks': 'generate_waveform_peaks',
+  'extract-image-palette': 'extract_image_palette',
   'get-lyrics': 'get_lyrics',
   'clear-lyrics-cache': 'clear_lyrics_cache',
   'get-cached-lyric': 'get_cached_lyric',
@@ -103,6 +105,12 @@ export const api = {
       'get_audio_fingerprint',
       { filePath }
     ),
+
+  generateWaveformPeaks: (filePath: string, buckets = 180) =>
+    invoke<number[]>('generate_waveform_peaks', { filePath, buckets }),
+
+  extractImagePalette: (imagePath: string) =>
+    invoke<[string, string, string[]] | null>('extract_image_palette', { imagePath }),
 
   deleteVariantFile: (filePath: string) =>
     invoke<{ ok: boolean; deleted?: boolean; error?: string }>('delete_variant_file', {
