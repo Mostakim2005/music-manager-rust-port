@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -16,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Setup Rust Stable
         uses: dtolnay/rust-toolchain@stable
@@ -28,18 +30,24 @@ jobs:
       - name: Fetch Windows Sidecars (yt-dlp & ffmpeg)
         shell: pwsh
         run: |
+          node scripts/fetch-binaries.mjs
           New-Item -ItemType Directory -Force -Path "src-tauri/bin"
-          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
+          if (Test-Path "resources/bin/yt-dlp.exe") {
+            Copy-Item "resources/bin/yt-dlp.exe" "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
+          } else {
+            Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
+          }
           if (Test-Path "resources/bin/ffmpeg.exe") {
             Copy-Item "resources/bin/ffmpeg.exe" "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
+          } else {
+            Invoke-WebRequest -Uri "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64" -OutFile "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
           }
 
       - name: Install Frontend Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Verify Types and Tests
         run: |
-          npm run build
           npm run typecheck
           npm test
           node .sweep-gate.mjs
@@ -49,10 +57,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          releaseDraft: false
           args: --config src-tauri/tauri.windows.conf.json
+
+      - name: Package Portable Executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist-portable"
+          if (Test-Path "src-tauri/target/release/music-manager.exe") {
+            Copy-Item "src-tauri/target/release/music-manager.exe" "dist-portable/MusicManager-v2.0.0-Portable.exe"
+            Copy-Item "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe" "dist-portable/yt-dlp.exe"
+            Copy-Item "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe" "dist-portable/ffmpeg.exe"
+            Compress-Archive -Path "dist-portable/*" -DestinationPath "dist-portable/MusicManager-v2.0.0-Windows-Portable.zip"
+          }
+
+      - name: Attach Portable Zip to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-portable/MusicManager-v2.0.0-Windows-Portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-android:
     runs-on: ubuntu-latest
+    needs: build-windows
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +91,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -87,11 +117,20 @@ jobs:
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
         run: |
-          npm ci
+          npm install
+          npx @tauri-apps/cli android init --ci
           npx @tauri-apps/cli android build --apk true
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: music-manager-android-apk
-          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -36,6 +36,8 @@ export default defineConfig({
   ],
   publicDir: resolve('resources'),
   build: {
+    outDir: resolve('dist'),
+    emptyOutDir: true,
     // Modules like MusicHook use top-level await; the default target (es2020) cannot transpile it and breaks the web build
     target: 'es2022'
   },

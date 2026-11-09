@@ -16,52 +16,19 @@ import {
   type YtSearchResult
 } from './youtubeFormats';
 
-export interface YtStreamUrlResult {
-  videoUrl: string;
-  audioUrl?: string;
-  headers?: Record<string, string>;
-  isMuxedProxy?: boolean;
-}
+import type {
+  YtStreamUrlResult,
+  YtDownloadOptions,
+  YtDownloadProgress,
+  YtBinaryStatus
+} from './youtubeFormats';
 
-export interface YtDownloadOptions {
-  kind: 'audio' | 'video';
-  height?: number;
-  /** Exact yt-dlp format id (per-codec quality row selection). */
-  formatId?: string;
-  /**
-   * Download the video stream without an audio track. Playback is linked A/V:
-   * the song's own audio file is the sound source and the video is shown muted
-   * next to it, so a video-only file is smaller and avoids duplicated audio.
-   */
-  videoOnly?: boolean;
-  audioFormat?: 'm4a' | 'mp3' | 'opus';
-  targetDir?: string;
-  fileBaseName?: string;
-  embedLink?: boolean;
-}
-
-export interface YtDownloadProgress {
-  jobId: string;
-  percent: number;
-  speed: string;
-  eta: string;
-  state: 'queued' | 'downloading' | 'processing' | 'completed' | 'cancelled' | 'error';
-  filePath?: string;
-  error?: string;
-}
-
-export interface YtBinaryStatus {
-  ytDlp: {
-    installed: boolean;
-    path: string;
-    version: string | null;
-  };
-  ffmpeg: {
-    installed: boolean;
-    path: string;
-    version: string | null;
-  };
-}
+export type {
+  YtStreamUrlResult,
+  YtDownloadOptions,
+  YtDownloadProgress,
+  YtBinaryStatus
+};
 
 // Active background downloads
 const activeDownloads = new Map<string, ReturnType<typeof spawn>>();

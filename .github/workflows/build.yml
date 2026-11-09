@@ -1,12 +1,8 @@
-name: Build Portable Release
+name: Build Portable Release (Legacy Electron)
 
-# Tag-triggered cloud build: push a version tag (v*) and GitHub's Windows
-# runner builds the portable .exe and attaches it to the GitHub Release.
-# Heavy binaries are never committed to git history — they are built here.
+# Manual fallback for legacy Electron builds.
+# Tag-triggered releases are handled by build-release.yml (Tauri v2 + Rust).
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:

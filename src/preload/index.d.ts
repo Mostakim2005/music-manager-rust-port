@@ -178,19 +178,19 @@ export interface YouTubeBridge {
   streamUrl: (
     idOrUrl: string,
     options?: { kind?: 'audio' | 'video'; height?: number }
-  ) => Promise<import('../main/modules/youtube').YtStreamUrlResult>;
+  ) => Promise<import('../main/modules/youtubeFormats').YtStreamUrlResult>;
   download: (
     idOrUrl: string,
-    options: import('../main/modules/youtube').YtDownloadOptions
+    options: import('../main/modules/youtubeFormats').YtDownloadOptions
   ) => Promise<string>;
   cancelDownload: (jobId: string) => Promise<boolean>;
   readLink: (filePath: string) => Promise<string | null>;
   writeLink: (filePath: string, youtubeUrl: string) => Promise<{ ok: boolean; error?: string }>;
   resolveDownloadDir: (contextFilePath?: string) => Promise<string>;
-  binaryStatus: () => Promise<import('../main/modules/youtube').YtBinaryStatus>;
+  binaryStatus: () => Promise<import('../main/modules/youtubeFormats').YtBinaryStatus>;
   updateBinary: () => Promise<{ success: boolean; output: string; version: string | null }>;
   onDownloadProgress: (
-    callback: (progress: import('../main/modules/youtube').YtDownloadProgress) => void
+    callback: (progress: import('../main/modules/youtubeFormats').YtDownloadProgress) => void
   ) => () => void;
 }
 

@@ -12,6 +12,7 @@ const skipPrefixes = [
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'dist' || entry.name === 'node_modules') continue;
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(p, out);
     else if (exts.includes(path.extname(entry.name))) out.push(p);

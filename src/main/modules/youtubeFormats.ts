@@ -47,6 +47,48 @@ export interface YtSearchResult {
 /**
  * Standard YouTube video quality heights in descending order.
  */
+
+export interface YtStreamUrlResult {
+  videoUrl: string;
+  audioUrl?: string;
+  headers?: Record<string, string>;
+  isMuxedProxy?: boolean;
+}
+
+export interface YtDownloadOptions {
+  kind: 'audio' | 'video';
+  height?: number;
+  formatId?: string;
+  videoOnly?: boolean;
+  audioFormat?: 'm4a' | 'mp3' | 'opus';
+  targetDir?: string;
+  fileBaseName?: string;
+  embedLink?: boolean;
+}
+
+export interface YtDownloadProgress {
+  jobId: string;
+  percent: number;
+  speed: string;
+  eta: string;
+  state: 'queued' | 'downloading' | 'processing' | 'completed' | 'cancelled' | 'error';
+  filePath?: string;
+  error?: string;
+}
+
+export interface YtBinaryStatus {
+  ytDlp: {
+    installed: boolean;
+    path: string;
+    version: string | null;
+  };
+  ffmpeg: {
+    installed: boolean;
+    path: string;
+    version: string | null;
+  };
+}
+
 export const STANDARD_HEIGHTS = [1080, 720, 480, 360, 240, 144] as const;
 
 /**
