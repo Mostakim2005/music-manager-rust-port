@@ -141,16 +141,14 @@ pub async fn yt_formats<R: Runtime>(
         for fmt in &info.formats {
             let has_video = fmt.has_video;
             let has_audio = fmt.has_audio;
-            let container = fmt
-                .container
-                .clone()
-                .unwrap_or_else(|| "mp4".to_string());
-            let raw_codec = fmt
-                .codecs
-                .clone()
-                .unwrap_or_else(|| "h264".to_string());
+            let container = fmt.mime_type.container.clone();
+            let raw_codec = fmt.mime_type.codecs.join(", ");
             let codec = normalize_codec_name(&raw_codec);
-            let bitrate_kbps = fmt.bitrate.map(|b| (b / 1000) as u32);
+            let bitrate_kbps = if fmt.bitrate > 0 {
+                Some((fmt.bitrate / 1000) as u32)
+            } else {
+                None
+            };
             let size_bytes = fmt
                 .content_length
                 .as_ref()
@@ -190,7 +188,7 @@ pub async fn yt_formats<R: Runtime>(
         return Ok(YtFormatsResponse {
             id: details.video_id.clone(),
             title: details.title.clone(),
-            uploader: Some(details.author.name.clone()),
+            uploader: details.author.as_ref().map(|a| a.name.clone()),
             duration_sec,
             thumbnail,
             video_formats,
