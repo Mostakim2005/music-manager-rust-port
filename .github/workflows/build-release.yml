@@ -5,12 +5,22 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target (all, windows, android)'
+        required: false
+        default: 'all'
+      release_tag:
+        description: 'GitHub Release Tag to attach to'
+        required: false
+        default: 'v2.0.0'
 
 permissions:
   contents: write
 
 jobs:
   build-windows:
+    if: github.event_name == 'push' || github.event.inputs.target != 'android'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,9 +70,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v2.0.0
-          releaseName: 'Music Manager v2.0.0 (Tauri v2 + Rust)'
-          releaseBody: 'Release v2.0.0: High-performance Tauri v2 + Rust edition with Namida glassmorphic UI, ambient audio-reactive mesh canvas, and linked AV sync.'
+          tagName: ${{ github.event.inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v2.0.0' }}
+          releaseName: 'Music Manager ${{ github.event.inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v2.0.0' }} (Tauri v2 + Rust)'
+          releaseBody: 'Release ${{ github.event.inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v2.0.0' }}: High-performance Tauri v2 + Rust edition with Namida glassmorphic UI, ambient audio-reactive mesh canvas, and linked AV sync.'
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: false
@@ -80,9 +90,10 @@ jobs:
           }
 
       - name: Attach Portable Zip to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v2.0.0' }}
           files: |
             dist-portable/MusicManager-v2.0.0-Windows-Portable.zip
         env:
@@ -91,6 +102,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     needs: build-windows
+    if: always() && (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') && (github.event_name == 'push' || github.event.inputs.target != 'windows')
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -101,16 +113,17 @@ jobs:
           node-version: 20
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK & NDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install NDK r26d
-        run: sdkmanager --install "ndk;26.3.11579264"
+      - name: Accept Android SDK Licenses & Install NDK
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "ndk;26.3.11579264" "build-tools;34.0.0" "platforms;android-34"
 
       - name: Setup Rust with Android Targets
         uses: dtolnay/rust-toolchain@stable
@@ -124,11 +137,12 @@ jobs:
       - name: Install Frontend Dependencies & Build Android APK
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          NDK_HOME: /usr/local/lib/android/sdk/ndk/26.3.11579264
         run: |
           npm install --ignore-scripts
           npx @tauri-apps/cli android init --ci
-          npx @tauri-apps/cli android build --apk true
+          npx @tauri-apps/cli android build --apk --ci
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
@@ -137,9 +151,10 @@ jobs:
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
 
       - name: Attach APK to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.release_tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || 'v2.0.0' }}
           files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
