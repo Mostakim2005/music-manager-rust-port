@@ -1,4 +1,4 @@
-name: Build Windows (.exe) & Android (.apk)
+name: 'Build Windows (.exe) and Android (.apk)'
 
 on:
   push:
