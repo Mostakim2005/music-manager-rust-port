@@ -56,26 +56,31 @@ flowchart TB
 
 ## 3. Core Subsystems & Engineering Tricks
 
-### [SUBSYSTEM: Rust-Tauri-V2-Port-Architecture] | Aliases: tauri, rust port, webview2, lofty, tokio process
+### [SUBSYSTEM: Rust-Tauri-V2-Port-Architecture] | Aliases: tauri, rust port, webview2, lofty, tokio process, stream protocol, sqlite, namida
 > **1-Line Summary:** Tauri v2 hosts the Vue 3 frontend in Windows WebView2 while Rust runs all I/O, tagging, process execution, and SQLite storage natively.
-* **How It Works (Plain English):** The frontend talks to Rust through strongly-typed `tauri::command` handlers and event streams (`tauri::ipc::Channel`). `yt-dlp` runs as an asynchronous child process under `tokio::process::Command`. File tagging is handled by the `lofty` crate, and data is stored in a local SQLite file in `%LOCALAPPDATA%`.
+* **How It Works (Plain English):** The frontend talks to Rust through strongly-typed `tauri::command` handlers and event streams (`tauri::ipc::Channel`). `yt-dlp` runs as an asynchronous sidecar on Windows, and `rusty_ytdl` provides pure-Rust extraction on Android. Media streaming uses the custom `stream://` protocol supporting HTTP 206 partial byte ranges for instant seeking. File tagging is handled by the `lofty` crate, acoustic fingerprinting by `symphonia` + `rusty-chromaprint`, waveform peaks by `symphonia`, and data is stored in embedded SQLite (`music_manager.db`) with WAL mode.
 * **Data Flow Diagram:**
 ```mermaid
 sequenceDiagram
     participant UI as Vue 3 Frontend
     participant IPC as Tauri v2 IPC Bridge
     participant RUST as Rust Core (tokio)
-    participant EXT as yt-dlp / Lofty / SQLite
-    UI->>IPC: invoke('fetch_youtube_formats', { url })
+    participant EXT as Lofty / Symphonia / SQLite / yt-dlp
+    UI->>IPC: invoke('scan_local_music_with_stats', { folderPath })
     IPC->>RUST: Async command dispatch
-    RUST->>EXT: tokio::process::Command("yt-dlp", ["-J", ...])
-    EXT-->>RUST: stdout JSON stream
-    RUST-->>IPC: serde_json typed struct
-    IPC-->>UI: Reactive format tree
+    RUST->>EXT: Rayon parallel directory walk + Lofty parsing
+    EXT-->>RUST: ScannedTrackMetadata stream + Color-thief palette
+    RUST-->>IPC: Typed JSON struct
+    UI-->>UI: Render Namida WebGL2 ambient mesh & waveform seekbar
 ```
 * **Code Anchors (Grep Targets):**
-  * `RUST_PORT_ANALYSIS.md` -> Complete architectural blueprint
-  * `src-tauri/src/main.rs` -> Tauri application entrypoint
+  * `src-tauri/src/lib.rs` -> Tauri application setup, SQLite migrations & command router
+  * `src-tauri/src/protocol.rs` -> Custom `stream://` Range HTTP 206 handler
+  * `src-tauri/src/commands/scanner_tags.rs` -> Parallel scanner, Lofty tags, Symphonia peaks & palette
+  * `src-tauri/src/commands/youtube_dl.rs` -> Dual-platform YouTube engine (sidecar + pure-Rust)
+  * `src-tauri/src/commands/network_proxy.rs` -> CORS-free LRCLIB/iTunes metadata proxy & download queue
+  * `src-tauri/src/commands/discord_rpc.rs` -> Native Discord Rich Presence
+  * `src/renderer/api/tauriBridge.ts` -> 1:1 drop-in Electron IPC emulator for window.api and window.youtube
 
 ### [SUBSYSTEM: Linked-AV-Playback-Engine] | Aliases: video mode, muted video, shared clock, audio master
 > **1-Line Summary:** The audio element is always the master clock and only sound source; the video is muted and follows it, so the two can never drift apart audibly.

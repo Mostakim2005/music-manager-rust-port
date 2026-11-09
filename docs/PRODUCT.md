@@ -129,12 +129,20 @@
   * `src/main/modules/tagAndMetadataManager.ts` -> `library:export-m3u8`, `library:import-backup-json`
   * `src/renderer/services/listeningStatsService.ts` -> `addListeningSeconds`, `recordTrackPlay`
 
-## 3. Planned Features & App-Merge Wishlist
+### [FEATURE: Rust-Tauri-V2-Engine-And-Namida-Visuals] | Aliases: rust port, tauri v2, namida visuals, ambient canvas, waveform seekbar, karaoke glow
+> **1-Line Summary:** Native Tauri v2 + compiled Rust media engine delivering 60fps WebGL2 ambient gradients, SQLite persistence, and Symphonia acoustic waveform seekbars.
+* **User Intention (Non-Negotiable):** 100% feature and visual parity with the Vue 3 frontend, cutting idle memory down to ~45MB with instant HTTP 206 range seeking, parallel directory scanning, pure-Rust tagging/fingerprinting, dual-platform YouTube streaming, and proportional audio/video sync locking.
+* **Visual / UI Behavior:** Real-time WebGL2 ambient mesh shader pulsing with bass energy; interactive Namida waveform seekbar with amplitude peaks and hover preview; word-by-word karaoke glow; Windows SMTC and Android MediaSession integration.
+* **Code Anchors (Grep Targets):**
+  * `src-tauri/src/commands/scanner_tags.rs` -> `scan_local_music_with_stats`, `generate_waveform_peaks`, `get_audio_fingerprint`
+  * `src-tauri/src/commands/youtube_dl.rs` -> `yt_formats`, `yt_stream_url`, `yt_download`
+  * `src-tauri/src/commands/network_proxy.rs` -> `fetch_multi_source_lyrics`, `fetch_online_metadata`
+  * `src/renderer/components/namida/NamidaAmbientCanvas.vue` -> `renderLoop`, `compileShader`
+  * `src/renderer/components/namida/NamidaWaveformSeekbar.vue` -> `onPointerDown`, `normalizedPeaks`
+  * `src/renderer/composables/useLinkedMediaSync.ts` -> `enforceSyncTick`
+  * `src/renderer/services/songLibrary.ts` -> `getLibraryDb`, `getOrComputeWaveformPeaks`
 
-### [WISHLIST: Rust-Tauri-V2-Migration] | Aliases: rust port, tauri v2, namida player, memory reduction, portable binary
-> **1-Line Summary:** Port Music Manager to Tauri v2 and Rust, slashing idle RAM from ~250MB to ~45MB and portable exe to ~16MB while retaining 100% Vue 3 UI and Namida aesthetics.
-* **User Intention:** Ultra-fast, lightweight Windows desktop player with native Rust performance and zero visual regressions.
-* **Target Integration Point:** `RUST_PORT_ANALYSIS.md` -> Full phased blueprint.
+## 3. Planned Features & App-Merge Wishlist
 
 ### [WISHLIST: Cloud-Built-Releases] | Aliases: github actions, cloud build, releases, tag build, portable and installer
 > **1-Line Summary:** Version tags trigger a GitHub Actions build that attaches both the portable `.exe` and the NSIS installer to the release, instead of storing builds locally.

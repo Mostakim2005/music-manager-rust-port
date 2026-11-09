@@ -1,0 +1,97 @@
+name: Build Windows (.exe) & Android (.apk)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Fetch Windows Sidecars (yt-dlp & ffmpeg)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "src-tauri/bin"
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
+          if (Test-Path "resources/bin/ffmpeg.exe") {
+            Copy-Item "resources/bin/ffmpeg.exe" "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
+          }
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+
+      - name: Verify Types and Tests
+        run: |
+          npm run build
+          npm run typecheck
+          npm test
+          node .sweep-gate.mjs
+
+      - name: Build Windows Tauri v2 Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --config src-tauri/tauri.windows.conf.json
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK r26d
+        run: sdkmanager --install "ndk;26.3.11579264"
+
+      - name: Setup Rust with Android Targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Frontend Dependencies & Build Android APK
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+        run: |
+          npm ci
+          npx @tauri-apps/cli android build --apk true
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-manager-android-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk

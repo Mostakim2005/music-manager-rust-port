@@ -63,6 +63,7 @@ const CHANNEL_TO_RUST_COMMAND: Record<string, string> = {
   'lx-music-http-request': 'lx_music_http_request',
   'lx-music-http-cancel': 'lx_music_http_cancel',
   'save-lyric-file': 'save_lyric_file',
+  'update-discord-presence': 'update_discord_presence',
   'generate-waveform-peaks': 'generate_waveform_peaks',
   'extract-image-palette': 'extract_image_palette',
   'get-lyrics': 'get_lyrics',
@@ -111,6 +112,13 @@ export const api = {
 
   extractImagePalette: (imagePath: string) =>
     invoke<[string, string, string[]] | null>('extract_image_palette', { imagePath }),
+
+  updateDiscordPresence: (payload: {
+    title: string;
+    artist: string;
+    album?: string;
+    isPlaying: boolean;
+  }) => invoke<boolean>('update_discord_presence', { payload }),
 
   deleteVariantFile: (filePath: string) =>
     invoke<{ ok: boolean; deleted?: boolean; error?: string }>('delete_variant_file', {

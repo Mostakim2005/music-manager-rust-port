@@ -340,3 +340,16 @@ export function shiftLinesTimestamps(
     text: l.text
   }));
 }
+
+
+/**
+ * Calculates syllable/word fill progress (0.0 to 1.0) for word-by-word karaoke glow.
+ */
+export function getWordFillProgress(
+  word: { startTime: number; duration: number },
+  currentTimeMs: number
+): number {
+  if (currentTimeMs <= word.startTime) return 0;
+  if (currentTimeMs >= word.startTime + word.duration) return 1;
+  return (currentTimeMs - word.startTime) / Math.max(1, word.duration);
+}

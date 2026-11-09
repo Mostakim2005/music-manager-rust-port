@@ -121,6 +121,7 @@ pub fn run() {
             commands::window_shell::restore_window,
             commands::window_shell::delete_variant_file,
             commands::window_shell::get_system_fonts,
+            commands::discord_rpc::update_discord_presence,
 
             // Local media scanner, tag editor, fingerprinting & waveform
             commands::scanner_tags::scan_local_music_with_stats,

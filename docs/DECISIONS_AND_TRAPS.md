@@ -243,3 +243,20 @@ flowchart LR
 * **Why This Trap Exists (Plain English):** An outer repository scaffold without a remote traps git commands and coding agents into committing changes locally to the wrong repository branch (`master` vs `main`), obscuring the real git status.
 * **Protected Code Anchors (Grep Targets):**
   * Project root `.git` boundary
+
+
+### [TRAP: Single-Clock-Audio-Master-Invariance] | Aliases: video muted, audio master, playbackRate sync
+> **1-Line Summary:** NEVER allow the linked video element to unmute, claim playback exclusivity, or act as the master clock.
+* **Strict Rule:** `<video>` in `MusicFull.vue` must remain permanently muted with `volume = 0` and slaved to `<audio>`.
+* **Why This Trap Exists (Plain English):** Unmuting video or allowing it to pause/resume audio causes double audio, acoustic echo, and broken crossfade volume transitions. Micro-adjustments to `video.playbackRate` (`0.97x`–`1.03x`) smoothly eliminate drift without frame stutter.
+* **Protected Code Anchors (Grep Targets):**
+  * `src/renderer/composables/useLinkedMediaSync.ts` -> `enforceSyncTick`
+  * `src/renderer/components/lyric/MusicFull.vue` -> `syncVideoSlaveState`
+
+### [TRAP: Heavy-Binary-Git-Exclusion] | Aliases: no exe in git, sidecar exclusion, git bloat
+> **1-Line Summary:** NEVER commit `yt-dlp.exe`, `ffmpeg.exe`, or `src-tauri/target/` to git repository history.
+* **Strict Rule:** Always enforce `.gitignore` rules for `src-tauri/bin/*.exe` and `src-tauri/target/`.
+* **Why This Trap Exists (Plain English):** Committing 80MB+ binaries permanently bloats git history, trips GitHub push size limits, and slows down clones. Tag-triggered cloud builds in `.github/workflows/build-release.yml` fetch binaries in CI.
+* **Protected Code Anchors (Grep Targets):**
+  * `.gitignore` -> `src-tauri/bin/`, `src-tauri/target/`
+  * `.github/workflows/build-release.yml` -> `Fetch Windows Sidecars`

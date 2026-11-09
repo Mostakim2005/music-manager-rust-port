@@ -53,8 +53,10 @@ import {
   alignSubLyrics,
   copyLyric,
   lyricParser,
-  parseLyric
+  parseLyric,
+  getWordFillProgress
 } from '../src/renderer/utils/lyrics';
+import { useLinkedMediaSync } from '../src/renderer/composables/useLinkedMediaSync';
 
 describe('YesPlayMusic Ported Features & Namida Enhancements', () => {
   describe('1. Romanized & Translated Lyrics Engine (YesPlayMusic port)', () => {
@@ -176,6 +178,88 @@ describe('YesPlayMusic Ported Features & Namida Enhancements', () => {
       expect(videoSong.ar.map((a) => a.name)).toEqual(['YOASOBI', 'Real Akiba Boyz']);
       expect(videoSong.videoUrl).toBeDefined();
       expect(videoSong.videoUrl).toContain('local://');
+    });
+  });
+
+  describe('4. Namida Word-by-Word Karaoke Fill Progress', () => {
+    it('returns 0 before word starts, 1 after word finishes, and linear ratio in between', () => {
+      const word = { startTime: 1000, duration: 500 };
+      expect(getWordFillProgress(word, 800)).toBe(0);
+      expect(getWordFillProgress(word, 1000)).toBe(0);
+      expect(getWordFillProgress(word, 1250)).toBe(0.5);
+      expect(getWordFillProgress(word, 1500)).toBe(1);
+      expect(getWordFillProgress(word, 1800)).toBe(1);
+    });
+  });
+
+  describe('5. Proportional Rate-Locked Audio/Video Sync (useLinkedMediaSync)', () => {
+    it('enforces that video is strictly muted and volume is 0', () => {
+      const mockAudio = { paused: false, currentTime: 10.0, playbackRate: 1.0 } as HTMLAudioElement;
+      const mockVideo = {
+        paused: false,
+        currentTime: 10.0,
+        playbackRate: 1.0,
+        muted: false,
+        volume: 0.8,
+        readyState: 4,
+        play: vi.fn(),
+        pause: vi.fn()
+      } as unknown as HTMLVideoElement;
+
+      const { enforceSyncTick } = useLinkedMediaSync(
+        () => mockAudio,
+        () => mockVideo
+      );
+
+      enforceSyncTick();
+      expect(mockVideo.muted).toBe(true);
+      expect(mockVideo.volume).toBe(0);
+    });
+
+    it('proportionally micro-adjusts video playbackRate when drift is between 35ms and 450ms', () => {
+      const mockAudio = { paused: false, currentTime: 10.0, playbackRate: 1.0 } as HTMLAudioElement;
+      const mockVideo = {
+        paused: false,
+        currentTime: 10.1, // video is 100ms ahead -> drift = +0.1
+        playbackRate: 1.0,
+        muted: true,
+        volume: 0,
+        readyState: 4,
+        play: vi.fn(),
+        pause: vi.fn()
+      } as unknown as HTMLVideoElement;
+
+      const { enforceSyncTick } = useLinkedMediaSync(
+        () => mockAudio,
+        () => mockVideo
+      );
+
+      enforceSyncTick();
+      // correction = -0.1 * 0.25 = -0.025 -> new rate = 0.975
+      expect(mockVideo.playbackRate).toBe(0.975);
+    });
+
+    it('hard-seeks video when drift exceeds 450ms', () => {
+      const mockAudio = { paused: false, currentTime: 10.0, playbackRate: 1.0 } as HTMLAudioElement;
+      const mockVideo = {
+        paused: false,
+        currentTime: 12.0, // video is 2.0s ahead -> drift = +2.0
+        playbackRate: 1.0,
+        muted: true,
+        volume: 0,
+        readyState: 4,
+        play: vi.fn(),
+        pause: vi.fn()
+      } as unknown as HTMLVideoElement;
+
+      const { enforceSyncTick } = useLinkedMediaSync(
+        () => mockAudio,
+        () => mockVideo
+      );
+
+      enforceSyncTick();
+      expect(mockVideo.currentTime).toBe(10.0);
+      expect(mockVideo.playbackRate).toBe(1.0);
     });
   });
 });

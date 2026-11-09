@@ -1,0 +1,49 @@
+/* src/renderer/styles/namida.css */
+:root {
+  --namida-glass-bg: rgba(18, 18, 26, 0.62);
+  --namida-glass-border: rgba(255, 255, 255, 0.09);
+  --namida-glass-highlight: rgba(255, 255, 255, 0.16);
+  --namida-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.namida-frosted-panel {
+  background: var(--namida-glass-bg);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid var(--namida-glass-border);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 var(--namida-glass-highlight);
+  transition: transform 420ms var(--namida-spring), opacity 320ms ease;
+}
+
+/* Word-by-word karaoke fill sweep */
+.namida-lyric-line {
+  transition: transform 380ms var(--namida-spring), filter 320ms ease, opacity 320ms ease;
+  opacity: 0.42;
+  filter: blur(0.6px);
+  transform: scale(0.95);
+  transform-origin: left center;
+}
+
+.namida-lyric-line.is-active {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1.03);
+}
+
+.namida-karaoke-word {
+  display: inline-block;
+  position: relative;
+  color: rgba(255, 255, 255, 0.38);
+  background-image: linear-gradient(90deg, #ffffff 50%, rgba(255, 255, 255, 0.38) 50%);
+  background-size: 200% 100%;
+  background-position: calc(100% - (var(--word-progress, 0) * 100%)) 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: transform 140ms ease;
+}
+
+.namida-karaoke-word.is-sung {
+  transform: translateY(-1.5px);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.35));
+}
