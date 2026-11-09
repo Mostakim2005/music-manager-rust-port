@@ -1,16 +1,85 @@
 pub mod commands;
 pub mod protocol;
+pub mod state;
 
 use tauri::Manager;
+use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let migrations = vec![Migration {
+        version: 1,
+        description: "create_music_manager_tables",
+        sql: r#"
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+
+            CREATE TABLE IF NOT EXISTS songs (
+                id TEXT PRIMARY KEY NOT NULL,
+                title TEXT NOT NULL,
+                artist TEXT NOT NULL,
+                album TEXT,
+                durationSec REAL NOT NULL,
+                normKey TEXT NOT NULL,
+                youtubeId TEXT,
+                coverPath TEXT,
+                primaryColor TEXT,
+                backgroundColor TEXT,
+                fingerprint TEXT,
+                fingerprintDurationSec REAL,
+                lastPositionSec REAL,
+                lastPlayedAt INTEGER,
+                createdAt INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_songs_normKey ON songs(normKey);
+            CREATE INDEX IF NOT EXISTS idx_songs_youtubeId ON songs(youtubeId);
+            CREATE INDEX IF NOT EXISTS idx_songs_fingerprint ON songs(fingerprint);
+
+            CREATE TABLE IF NOT EXISTS variants (
+                id TEXT PRIMARY KEY NOT NULL,
+                songId TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                source TEXT NOT NULL,
+                path TEXT,
+                url TEXT,
+                container TEXT,
+                bitrateKbps INTEGER,
+                height INTEGER,
+                codec TEXT,
+                formatId TEXT,
+                sizeBytes INTEGER,
+                addedAt INTEGER NOT NULL,
+                FOREIGN KEY(songId) REFERENCES songs(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_variants_songId ON variants(songId);
+            CREATE INDEX IF NOT EXISTS idx_variants_path ON variants(path);
+
+            CREATE TABLE IF NOT EXISTS playback_positions (
+                key TEXT PRIMARY KEY NOT NULL,
+                positionSec REAL NOT NULL,
+                updatedAt INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS waveforms (
+                filePath TEXT PRIMARY KEY NOT NULL,
+                peaksJson TEXT NOT NULL,
+                updatedAt INTEGER NOT NULL
+            );
+        "#,
+        kind: MigrationKind::Up,
+    }];
+
     let builder = tauri::Builder::default()
+        .manage(state::AppState::new())
         .register_asynchronous_uri_scheme_protocol("stream", protocol::handle_stream_protocol)
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(
+            tauri_plugin_sql::Builder::default()
+                .add_migrations("sqlite:music_manager.db", migrations)
+                .build(),
+        )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -68,6 +137,36 @@ pub fn run() {
             commands::scanner_tags::import_m3u8,
             commands::scanner_tags::export_backup_json,
             commands::scanner_tags::import_backup_json,
+
+            // Dual-platform YouTube engine
+            commands::youtube_dl::yt_search,
+            commands::youtube_dl::yt_formats,
+            commands::youtube_dl::yt_stream_url,
+            commands::youtube_dl::yt_download,
+            commands::youtube_dl::yt_cancel_download,
+            commands::youtube_dl::yt_read_link,
+            commands::youtube_dl::yt_write_link,
+            commands::youtube_dl::yt_resolve_download_dir,
+            commands::youtube_dl::yt_binary_status,
+            commands::youtube_dl::yt_update_binary,
+
+            // Online metadata, LRCLIB lyrics & LX-Music proxy
+            commands::network_proxy::fetch_multi_source_lyrics,
+            commands::network_proxy::fetch_online_metadata,
+            commands::network_proxy::lx_music_http_request,
+            commands::network_proxy::lx_music_http_cancel,
+
+            // Download manager queue
+            commands::network_proxy::download_add,
+            commands::network_proxy::download_add_batch,
+            commands::network_proxy::download_pause,
+            commands::network_proxy::download_resume,
+            commands::network_proxy::download_cancel,
+            commands::network_proxy::download_cancel_all,
+            commands::network_proxy::download_get_queue,
+            commands::network_proxy::download_set_concurrency,
+            commands::network_proxy::download_get_completed,
+            commands::network_proxy::download_clear_completed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Music Manager Tauri application");

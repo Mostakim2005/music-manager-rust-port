@@ -4,6 +4,7 @@
  * Lazy initialization (no top-level await to prevent white-screen TDZ).
  */
 import Dexie, { type Table } from 'dexie';
+import Database from '@tauri-apps/plugin-sql';
 
 import { compareFingerprints } from '../../shared/acousticFingerprint';
 import { type DuplicatePair, findFingerprintDuplicatePairs } from '../../shared/duplicateDetection';
@@ -17,6 +18,8 @@ export interface Song {
   normKey: string;
   youtubeId?: string;
   coverPath?: string;
+  primaryColor?: string;
+  backgroundColor?: string;
   /** Acoustic fingerprint (loudness envelope) used to recognise the recording. */
   fingerprint?: string;
   fingerprintDurationSec?: number;
@@ -714,4 +717,140 @@ export function getCurrentSongKey(): string {
   } catch {
     return '';
   }
+}
+
+
+// ============================================================================
+// SQLITE DATABASE & ONE-TIME DEXIE MIGRATION
+// ============================================================================
+
+let dbPromise: Promise<Database> | null = null;
+
+export async function getLibraryDb(): Promise<Database> {
+  if (!dbPromise) {
+    dbPromise = Database.load('sqlite:music_manager.db').then(async (db) => {
+      await migrateDexieToSqliteOnce(db);
+      return db;
+    });
+  }
+  return dbPromise;
+}
+
+/** One-time automatic migration from legacy Dexie IndexedDB (`musicManagerLibrary`) into SQLite */
+export async function migrateDexieToSqliteOnce(sqlDb: Database): Promise<void> {
+  const MIGRATION_FLAG = 'mm_dexie_to_sqlite_v1_done';
+  if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_FLAG) === 'true') {
+    return;
+  }
+
+  try {
+    const exists = await Dexie.exists('musicManagerLibrary');
+    if (!exists) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(MIGRATION_FLAG, 'true');
+      }
+      return;
+    }
+
+    const legacyDb = new Dexie('musicManagerLibrary');
+    legacyDb.version(2).stores({
+      songs: '&id, normKey, youtubeId, fingerprint, createdAt',
+      variants: '&id, songId, path, kind, addedAt',
+      playbackPositions: '&key, updatedAt'
+    });
+
+    const songs = await legacyDb.table<Song>('songs').toArray();
+    const variants = await legacyDb.table<Variant>('variants').toArray();
+    const positions = await legacyDb.table<PlaybackPositionRecord>('playbackPositions').toArray();
+
+    for (const s of songs) {
+      await sqlDb.execute(
+        `INSERT OR IGNORE INTO songs (
+          id, title, artist, album, durationSec, normKey, youtubeId, coverPath,
+          primaryColor, backgroundColor, fingerprint, fingerprintDurationSec,
+          lastPositionSec, lastPlayedAt, createdAt
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        [
+          s.id,
+          s.title,
+          s.artist,
+          s.album ?? null,
+          s.durationSec,
+          s.normKey,
+          s.youtubeId ?? null,
+          s.coverPath ?? null,
+          s.primaryColor ?? null,
+          s.backgroundColor ?? null,
+          s.fingerprint ?? null,
+          s.fingerprintDurationSec ?? null,
+          s.lastPositionSec ?? null,
+          s.lastPlayedAt ?? null,
+          s.createdAt
+        ]
+      );
+    }
+
+    for (const v of variants) {
+      await sqlDb.execute(
+        `INSERT OR IGNORE INTO variants (
+          id, songId, kind, source, path, url, container, bitrateKbps,
+          height, codec, formatId, sizeBytes, addedAt
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [
+          v.id,
+          v.songId,
+          v.kind,
+          v.source,
+          v.path ?? null,
+          v.url ?? null,
+          v.container ?? null,
+          v.bitrateKbps ?? null,
+          v.height ?? null,
+          v.codec ?? null,
+          v.formatId ?? null,
+          v.sizeBytes ?? null,
+          v.addedAt
+        ]
+      );
+    }
+
+    for (const p of positions) {
+      await sqlDb.execute(
+        `INSERT OR REPLACE INTO playback_positions (key, positionSec, updatedAt) VALUES ($1,$2,$3)`,
+        [p.key, p.positionSec, p.updatedAt]
+      );
+    }
+
+    legacyDb.close();
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(MIGRATION_FLAG, 'true');
+    }
+  } catch (err) {
+    console.warn('[SQLite Migration] Non-fatal Dexie import warning:', err);
+  }
+}
+
+export async function getOrComputeWaveformPeaks(
+  filePath: string,
+  buckets = 180
+): Promise<number[]> {
+  const db = await getLibraryDb();
+  const rows = await db.select<Array<{ peaksJson: string }>>(
+    `SELECT peaksJson FROM waveforms WHERE filePath = $1 LIMIT 1`,
+    [filePath]
+  );
+  if (rows.length > 0) {
+    try {
+      return JSON.parse(rows[0].peaksJson);
+    } catch {
+      // Fall through to recompute
+    }
+  }
+
+  const peaks = await (window as any).api.generateWaveformPeaks(filePath, buckets);
+  await db.execute(
+    `INSERT OR REPLACE INTO waveforms (filePath, peaksJson, updatedAt) VALUES ($1, $2, $3)`,
+    [filePath, JSON.stringify(peaks), Date.now()]
+  );
+  return peaks;
 }

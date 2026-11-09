@@ -70,3 +70,6 @@ src/renderer/components.d.ts
 docs/private/
 
 resources/bin/*.exe
+src-tauri/target/
+src-tauri/bin/
+src-tauri/gen/
