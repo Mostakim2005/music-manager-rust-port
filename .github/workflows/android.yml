@@ -42,6 +42,9 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install Frontend Dependencies and Build Android APK
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
@@ -50,6 +53,9 @@ jobs:
         run: |
           npm install --ignore-scripts
           npx @tauri-apps/cli android init --ci
+          cd src-tauri/gen/android
+          for i in 1 2 3 4 5; do ./gradlew --version && break || sleep 5; done
+          cd ../../..
           npx @tauri-apps/cli android build --apk --ci
 
       - name: Upload Android APK Artifact
