@@ -52,7 +52,7 @@
     "dev:tauri": "tauri dev",
     "build:tauri": "tauri build",
     "dev:vite": "vite dev",
-    "build:vite": "vue-tsc --noEmit -p tsconfig.web.json --composite false && vite build"
+    "build:vite": "vite build && vue-tsc --noEmit -p tsconfig.web.json --composite false"
   },
   "lint-staged": {
     "*.{ts,tsx,vue,js}": [

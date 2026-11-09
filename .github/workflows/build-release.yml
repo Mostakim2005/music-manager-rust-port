@@ -48,6 +48,7 @@ jobs:
 
       - name: Verify Types and Tests
         run: |
+          npm run build:vite
           npm run typecheck
           npm test
           node .sweep-gate.mjs
