@@ -241,7 +241,7 @@ fn parse_single_track(path: &Path, cover_cache_dir: &Path) -> anyhow::Result<Sca
 
                 let img_ext = match pic.mime_type() {
                     Some(MimeType::Png) => "png",
-                    Some(MimeType::Webp) => "webp",
+                    Some(MimeType::Unknown(ref s)) if s.to_lowercase().contains("webp") => "webp",
                     _ => "jpg",
                 };
 
@@ -440,7 +440,7 @@ pub async fn update_local_music_tags_and_file<R: Runtime>(
                     .as_str()
                 {
                     "png" => MimeType::Png,
-                    "webp" => MimeType::Webp,
+                    "webp" => MimeType::Unknown("image/webp".to_string()),
                     _ => MimeType::Jpeg,
                 };
                 tag.remove_picture_type(PictureType::CoverFront);
@@ -616,7 +616,7 @@ pub async fn get_audio_fingerprint(file_path: String) -> Result<Option<Fingerpri
                 let mut sample_buf = SampleBuffer::<i16>::new(decoded.capacity() as u64, spec);
                 sample_buf.copy_interleaved_ref(decoded);
                 let samples = sample_buf.samples();
-                printer.feed(samples);
+                printer.consume(samples);
                 processed_samples += samples.len();
                 windows += 1;
 
