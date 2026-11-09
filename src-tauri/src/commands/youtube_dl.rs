@@ -133,7 +133,7 @@ pub async fn yt_formats<R: Runtime>(
         use rusty_ytdl::{Video, VideoOptions};
         let video = Video::new_with_options(&url, VideoOptions::default())
             .map_err(|e| e.to_string())?;
-        let info = video.get_Info().await.map_err(|e| e.to_string())?;
+        let info = video.get_info().await.map_err(|e| e.to_string())?;
 
         let mut video_formats = Vec::new();
         let mut audio_formats = Vec::new();

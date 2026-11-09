@@ -12,6 +12,7 @@ pub struct AppUpdateState {
 
 #[tauri::command]
 pub async fn window_minimize<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         win.minimize().map_err(|e| e.to_string())?;
@@ -21,6 +22,7 @@ pub async fn window_minimize<R: Runtime>(app: AppHandle<R>) -> Result<(), String
 
 #[tauri::command]
 pub async fn window_maximize<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         let is_max = win.is_maximized().unwrap_or(false);
@@ -36,6 +38,7 @@ pub async fn window_maximize<R: Runtime>(app: AppHandle<R>) -> Result<(), String
 
 #[tauri::command]
 pub async fn is_window_maximized<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         return win.is_maximized().map_err(|e| e.to_string());
@@ -45,6 +48,7 @@ pub async fn is_window_maximized<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
 
 #[tauri::command]
 pub async fn toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         let is_full = win.is_fullscreen().unwrap_or(false);
@@ -56,6 +60,7 @@ pub async fn toggle_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<(), Stri
 
 #[tauri::command]
 pub async fn is_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         return win.is_fullscreen().map_err(|e| e.to_string());
@@ -65,6 +70,7 @@ pub async fn is_fullscreen<R: Runtime>(app: AppHandle<R>) -> Result<bool, String
 
 #[tauri::command]
 pub async fn close_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         win.hide().map_err(|e| e.to_string())?;
@@ -84,6 +90,7 @@ pub async fn resize_window<R: Runtime>(
     width: f64,
     height: f64,
 ) -> Result<(), String> {
+    let _ = (&app, width, height);
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         use tauri::LogicalSize;
@@ -95,6 +102,7 @@ pub async fn resize_window<R: Runtime>(
 
 #[tauri::command]
 pub async fn mini_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         use tauri::LogicalSize;
@@ -107,6 +115,7 @@ pub async fn mini_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn restore_window<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let _ = &app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(win) = app.get_webview_window("main") {
         use tauri::LogicalSize;

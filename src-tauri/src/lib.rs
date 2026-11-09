@@ -99,10 +99,10 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build());
 
     builder
-        .setup(|app| {
+        .setup(|_app| {
             // Apply subtle native Mica/Acrylic backdrop on Windows 11
             #[cfg(target_os = "windows")]
-            if let Some(win) = app.get_webview_window("main") {
+            if let Some(win) = _app.get_webview_window("main") {
                 let _ = window_vibrancy::apply_mica(&win, Some(true));
             }
             Ok(())
