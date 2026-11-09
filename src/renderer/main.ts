@@ -1,3 +1,4 @@
+import './api/tauriBridge';
 import './index.css';
 import '@/assets/css/mobile.css';
 import 'animate.css';

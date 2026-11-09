@@ -7,12 +7,16 @@
     {
       "name": "Alger",
       "url": "https://github.com/algerkong",
-      "roles": ["upstream source"]
+      "roles": [
+        "upstream source"
+      ]
     },
     {
       "name": "qier222",
       "url": "https://github.com/qier222",
-      "roles": ["upstream source"]
+      "roles": [
+        "upstream source"
+      ]
     }
   ],
   "main": "./out/main/index.js",
@@ -43,7 +47,12 @@
     "test:all": "npm run typecheck && npm test && ALGER_PLUGIN_NETWORK_E2E=1 npm test && npm run test:e2e && npm run test:e2e:vip",
     "test:e2e:vip": "node scripts/e2e/vip-resolve-e2e.mjs",
     "test:e2e:bulk": "node scripts/e2e/plugins-bulk-e2e.mjs",
-    "build:installer": "node scripts/fetch-binaries.mjs && npm run build && electron-builder --win nsis --x64 --publish never"
+    "build:installer": "node scripts/fetch-binaries.mjs && npm run build && electron-builder --win nsis --x64 --publish never",
+    "tauri": "tauri",
+    "dev:tauri": "tauri dev",
+    "build:tauri": "tauri build",
+    "dev:vite": "vite dev",
+    "build:vite": "vue-tsc --noEmit -p tsconfig.web.json && vite build"
   },
   "lint-staged": {
     "*.{ts,tsx,vue,js}": [
@@ -57,6 +66,15 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@httptoolkit/dbus-native": "^0.1.5",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-clipboard-manager": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-fs": "^2.7.1",
+    "@tauri-apps/plugin-http": "^2.8.3",
+    "@tauri-apps/plugin-notification": "^2.8.0",
+    "@tauri-apps/plugin-os": "^2.4.0",
+    "@tauri-apps/plugin-sql": "^2.6.0",
+    "@tauri-apps/plugin-store": "^2.5.0",
     "@xhayper/discord-rpc": "^1.5.1",
     "big-integer": "^1.6.52",
     "cheerio": "^1.2.0",
@@ -92,6 +110,7 @@
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@eslint/js": "^9.39.2",
     "@rushstack/eslint-patch": "^1.15.0",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/howler": "^2.2.12",
     "@types/node": "^20.19.26",
     "@types/node-fetch": "^2.6.13",

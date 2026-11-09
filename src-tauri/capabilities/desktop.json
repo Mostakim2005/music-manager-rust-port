@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-capability",
+  "platforms": ["windows"],
+  "windows": ["main", "lyric"],
+  "permissions": [
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
+    "core:tray:default",
+    "window-state:default",
+    "global-shortcut:default",
+    "updater:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "bin/yt-dlp", "sidecar": true, "args": true },
+        { "name": "bin/ffmpeg", "sidecar": true, "args": true }
+      ]
+    }
+  ]
+}

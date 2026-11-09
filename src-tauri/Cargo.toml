@@ -1,0 +1,71 @@
+[package]
+name = "music-manager"
+version = "2.0.0"
+description = "Music Manager - Tauri v2 + Rust Edition"
+authors = ["Music Manager Team"]
+edition = "2021"
+
+[lib]
+name = "music_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Core Tauri v2 & Async Runtime
+tauri = { version = "2.1", features = ["protocol-asset"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.41", features = ["full"] }
+futures = "0.3"
+anyhow = "1.0"
+thiserror = "2.0"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+base64 = "0.22"
+percent-encoding = "2.3"
+http = "1.1"
+mime_guess = "2.0"
+parking_lot = "0.12"
+log = "0.4"
+
+# Cross-Platform Tauri v2 Plugins (Windows + Android)
+tauri-plugin-fs = "2.0"
+tauri-plugin-dialog = "2.0"
+tauri-plugin-http = "2.0"
+tauri-plugin-sql = { version = "2.0", features = ["sqlite"] }
+tauri-plugin-notification = "2.0"
+tauri-plugin-clipboard-manager = "2.0"
+tauri-plugin-store = "2.0"
+tauri-plugin-os = "2.0"
+
+# Media, Tagging, Fingerprinting, Waveform & Namida Visuals (Shared)
+lofty = "0.21"
+walkdir = "2.5"
+rayon = "1.10"
+rusty-chromaprint = "0.2"
+symphonia = { version = "0.5", features = ["all"] }
+color-thief = "0.2"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
+
+# Type-Safe IPC Generation
+specta = { version = "=2.0.0-rc.20", features = ["derive", "serde"] }
+tauri-specta = { version = "=2.0.0-rc.20", features = ["derive", "typescript"] }
+
+# Desktop-Only Dependencies (Windows)
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-shell = "2.0"
+tauri-plugin-global-shortcut = "2.0"
+tauri-plugin-window-state = "2.0"
+tauri-plugin-single-instance = "2.0"
+tauri-plugin-updater = "2.0"
+window-vibrancy = "0.5"
+souvlaki = "0.7"
+discord-rich-presence = "0.2"
+font-kit = "0.14"
+
+# Android-Only Dependencies (Pure-Rust YouTube & Media Extractor)
+[target.'cfg(target_os = "android")'.dependencies]
+rusty_ytdl = { version = "0.7", default-features = false, features = ["rustls-tls", "search"] }

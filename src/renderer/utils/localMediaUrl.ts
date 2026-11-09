@@ -1,16 +1,7 @@
 /**
- * Converts stored `local://` URLs into loopback HTTP URLs that Chromium's
- * media pipeline accepts (and can seek). Stored metadata keeps the `local://`
- * form so local-track detection elsewhere is unchanged.
+ * Converts stored `local://` URLs into seekable Range protocol URLs (Tauri v2 `stream://` or loopback HTTP).
+ * Stored metadata keeps the `local://` form so local-track detection elsewhere is unchanged.
  */
-
-function getBaseUrl(): string {
-  try {
-    return (window as any)?.api?.localMediaBaseUrl || '';
-  } catch {
-    return '';
-  }
-}
 
 function toBase64Url(value: string): string {
   const bytes = new TextEncoder().encode(value);
@@ -21,11 +12,22 @@ function toBase64Url(value: string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Builds a seekable loopback URL for an absolute file path. */
+export function getStreamBaseUrl(): string {
+  if (typeof window !== 'undefined' && ((window as any)?.__TAURI_INTERNALS__ || (window as any)?.__TAURI__)) {
+    const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
+    return isWindows ? 'http://stream.localhost' : 'stream://localhost';
+  }
+  try {
+    return (window as any)?.api?.localMediaBaseUrl || '';
+  } catch {
+    return '';
+  }
+}
+
+/** Builds a seekable media URL for an absolute file path. */
 export function filePathToMediaUrl(filePath: string): string {
-  const base = getBaseUrl();
+  const base = getStreamBaseUrl();
   if (!base) {
-    // Fallback keeps the previous behaviour when the server is unavailable.
     const normalized = filePath.replace(/\\/g, '/');
     return `local:///${normalized.split('/').map(encodeURIComponent).join('/')}`;
   }
@@ -36,9 +38,7 @@ export function filePathToMediaUrl(filePath: string): string {
 export function toPlayableMediaUrl(url?: string | null): string | undefined {
   if (!url) return url ?? undefined;
   if (!url.startsWith('local://')) return url;
-  // Without a running media server, leave the stored URL untouched rather than
-  // round-tripping it through the encoder (which would rewrite the slash count).
-  if (!getBaseUrl()) return url;
+  if (!getStreamBaseUrl()) return url;
 
   try {
     const decoded = decodeURIComponent(url.slice('local://'.length));
@@ -51,11 +51,11 @@ export function toPlayableMediaUrl(url?: string | null): string | undefined {
 }
 
 /**
- * Proxies a remote media URL (and its required headers) through the loopback
- * server so Chromium accepts it and Range seeks work.
+ * Proxies a remote media URL (and its required headers) through the stream
+ * handler so Chromium accepts it and Range seeks work.
  */
 export function remoteMediaProxyUrl(url: string, headers?: Record<string, string> | null): string {
-  const base = getBaseUrl();
+  const base = getStreamBaseUrl();
   if (!base) return url;
   const headerPart =
     headers && Object.keys(headers).length > 0 ? `&h=${toBase64Url(JSON.stringify(headers))}` : '';
