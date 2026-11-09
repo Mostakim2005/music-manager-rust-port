@@ -88,14 +88,26 @@ function downloadFile(url, destPath) {
   });
 }
 
+const YT_DLP_URLS = [
+  `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${ytDlpBinaryName}`,
+  `https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/${ytDlpBinaryName}`
+];
+
 if (!fs.existsSync(ytDlpTarget)) {
   console.log(`[fetch-binaries] Downloading latest ${ytDlpBinaryName} from GitHub releases...`);
-  const downloadUrl = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${ytDlpBinaryName}`;
-  try {
-    await downloadFile(downloadUrl, ytDlpTarget);
-    console.log(`[fetch-binaries] ${ytDlpBinaryName} downloaded successfully.`);
-  } catch (err) {
-    console.warn(`[fetch-binaries] Failed to download ${ytDlpBinaryName}:`, err.message);
+  let ok = false;
+  for (const url of YT_DLP_URLS) {
+    try {
+      await downloadFile(url, ytDlpTarget);
+      console.log(`[fetch-binaries] ${ytDlpBinaryName} downloaded successfully from`, url);
+      ok = true;
+      break;
+    } catch (err) {
+      console.warn(`[fetch-binaries] Failed to download ${ytDlpBinaryName} from ${url}:`, err.message);
+    }
+  }
+  if (!ok) {
+    console.warn(`[fetch-binaries] Could not fetch ${ytDlpBinaryName} automatically.`);
   }
 } else {
   console.log('[fetch-binaries] yt-dlp binary already exists at:', ytDlpTarget);

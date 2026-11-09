@@ -35,12 +35,12 @@ jobs:
           if (Test-Path "resources/bin/yt-dlp.exe") {
             Copy-Item "resources/bin/yt-dlp.exe" "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
           } else {
-            Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
+            curl.exe -L --retry 3 "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe" -o "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe"
           }
           if (Test-Path "resources/bin/ffmpeg.exe") {
             Copy-Item "resources/bin/ffmpeg.exe" "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
           } else {
-            Invoke-WebRequest -Uri "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64" -OutFile "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
+            curl.exe -L --retry 3 "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64" -o "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe"
           }
 
       - name: Install Frontend Dependencies
