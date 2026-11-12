@@ -10,10 +10,94 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  discover-branches:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.scan.outputs.matrix }}
+      summary: ${{ steps.scan.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all remote branches and deduplicate by commit SHA
+        id: scan
+        run: |
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+          node - << 'EOF'
+          const { execSync } = require('node:child_process');
+          const fs = require('node:fs');
+
+          const rawBranches = execSync("git for-each-ref --format='%(refname:short)|%(objectname)|%(objectname:short=7)' refs/remotes/origin/", { encoding: 'utf8' })
+            .trim()
+            .split('\n')
+            .filter(Boolean);
+
+          const bySha = new Map();
+          for (const line of rawBranches) {
+            const [ref, fullSha, shortSha] = line.split('|');
+            if (!ref || ref === 'origin/HEAD' || ref === 'origin') continue;
+            const branch = ref.replace(/^origin\//, '');
+
+            try {
+              execSync(`git cat-file -e ${fullSha}:src-tauri/Cargo.toml`, { stdio: 'ignore' });
+            } catch {
+              console.log(`Skipping branch ${branch} (${shortSha}): no src-tauri/Cargo.toml`);
+              continue;
+            }
+
+            let version = '0.0.0';
+            try {
+              const pkgRaw = execSync(`git show ${fullSha}:package.json`, { encoding: 'utf8' });
+              version = JSON.parse(pkgRaw).version || '0.0.0';
+            } catch {}
+
+            if (!bySha.has(fullSha)) {
+              bySha.set(fullSha, {
+                branches: [branch],
+                full_sha: fullSha,
+                short_sha: shortSha,
+                version
+              });
+            } else {
+              bySha.get(fullSha).branches.push(branch);
+            }
+          }
+
+          const items = Array.from(bySha.values()).map((entry) => {
+            entry.branches.sort((a, b) => (a === 'main' ? -1 : b === 'main' ? 1 : a.localeCompare(b)));
+            const joinedBranch = entry.branches.join('+');
+            const slug = entry.branches
+              .map((b) => b.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, ''))
+              .join('-and-');
+            return {
+              branch: joinedBranch,
+              slug,
+              full_sha: entry.full_sha,
+              short_sha: entry.short_sha,
+              version: entry.version
+            };
+          });
+
+          const summary = items.map((i) => `${i.branch}@${i.short_sha}`).join(', ');
+          const matrixObj = { include: items };
+          console.log('Discovered deduplicated Rust/Tauri branches:', matrixObj);
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify(matrixObj)}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `summary=${summary}\n`);
+          EOF
+
+  build-windows:
+    needs: [discover-branches]
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover-branches.outputs.matrix) }}
+    steps:
+      - name: Checkout branch (${{ matrix.branch }} @ ${{ matrix.short_sha }})
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.full_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,34 +140,61 @@ jobs:
           node .sweep-gate.mjs
 
       - name: Build Windows Tauri v2 Release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v2.0.0' }}
-          releaseName: 'Music Manager ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v2.0.0' }} (Tauri v2 + Rust)'
-          releaseBody: 'Release ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v2.0.0' }}: High-performance Tauri v2 + Rust edition with Namida glassmorphic UI, ambient audio-reactive mesh canvas, and linked AV sync.'
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: false
-          args: --config src-tauri/tauri.windows.conf.json
-
-      - name: Package Portable Executable
         shell: pwsh
         run: |
+          npx @tauri-apps/cli build --config src-tauri/tauri.windows.conf.json
+
+      - name: Standardize Self-Identifying Binary Names
+        shell: pwsh
+        env:
+          VERSION: ${{ matrix.version }}
+          SLUG: ${{ matrix.slug }}
+          SHA: ${{ matrix.short_sha }}
+        run: |
+          $VERSION = $env:VERSION
+          $SLUG = $env:SLUG
+          $SHA = $env:SHA
+          $PREFIX = "MusicManager-Rust-Tauri-v$VERSION-branch-$SLUG-$SHA"
+
+          New-Item -ItemType Directory -Force -Path "dist-release"
           New-Item -ItemType Directory -Force -Path "dist-portable"
+
           if (Test-Path "src-tauri/target/release/music-manager.exe") {
-            Copy-Item "src-tauri/target/release/music-manager.exe" "dist-portable/MusicManager-v2.0.0-Portable.exe"
-            Copy-Item "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe" "dist-portable/yt-dlp.exe"
-            Copy-Item "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe" "dist-portable/ffmpeg.exe"
-            Compress-Archive -Path "dist-portable/*" -DestinationPath "dist-portable/MusicManager-v2.0.0-Windows-Portable.zip"
+            Copy-Item "src-tauri/target/release/music-manager.exe" "dist-portable/MusicManager.exe"
+            if (Test-Path "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe") {
+              Copy-Item "src-tauri/bin/yt-dlp-x86_64-pc-windows-msvc.exe" "dist-portable/yt-dlp.exe"
+            }
+            if (Test-Path "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe") {
+              Copy-Item "src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe" "dist-portable/ffmpeg.exe"
+            }
+            Compress-Archive -Path "dist-portable/*" -DestinationPath "dist-release/$PREFIX-Portable.zip" -Force
           }
 
-      - name: Attach Portable Zip to GitHub Release
+          $NSIS = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($NSIS) {
+            Copy-Item $NSIS.FullName "dist-release/$PREFIX-Setup.exe" -Force
+          }
+
+          $MSI = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($MSI) {
+            Copy-Item $MSI.FullName "dist-release/$PREFIX-x64.msi" -Force
+          }
+
+          Get-ChildItem -Path "dist-release"
+
+      - name: Upload Windows artifacts (${{ matrix.slug }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicManager-Rust-Tauri-Windows-${{ matrix.slug }}-${{ matrix.short_sha }}
+          path: dist-release/*
+          if-no-files-found: error
+
+      - name: Attach branch binaries to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v2.0.0' }}
-          files: |
-            dist-portable/MusicManager-v2.0.0-Windows-Portable.zip
+          name: "Music Manager [Rust-Tauri] ${{ github.ref_name }} (Branches: ${{ needs.discover-branches.outputs.summary }})"
+          files: dist-release/*
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

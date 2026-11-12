@@ -79,8 +79,13 @@ jobs:
             keytool -genkey -v -keystore release-debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=MusicManager, OU=Mobile, O=MusicManager, C=US"
             $BUILD_TOOLS/zipalign -v -p 4 "$APK_RAW" app-aligned.apk
             mkdir -p dist-release
-            $BUILD_TOOLS/apksigner sign --ks release-debug.keystore --ks-pass pass:android --key-pass pass:android --out dist-release/MusicManager-v2.0.0-Android-Universal.apk app-aligned.apk
-            $BUILD_TOOLS/apksigner verify --verbose dist-release/MusicManager-v2.0.0-Android-Universal.apk
+            VERSION=$(node -p "require('./package.json').version || '0.0.0'")
+            SHA=$(git rev-parse --short=7 HEAD)
+            BRANCH="${GITHUB_REF_NAME:-main}"
+            SLUG=$(echo "$BRANCH" | sed -E 's/[^a-zA-Z0-9._-]+/-/g' | sed -E 's/^-+|-+$//g')
+            PREFIX="MusicManager-Rust-Tauri-v${VERSION}-branch-${SLUG}-${SHA}"
+            $BUILD_TOOLS/apksigner sign --ks release-debug.keystore --ks-pass pass:android --key-pass pass:android --out "dist-release/${PREFIX}-Android-Universal.apk" app-aligned.apk
+            $BUILD_TOOLS/apksigner verify --verbose "dist-release/${PREFIX}-Android-Universal.apk"
           fi
 
       - name: Upload Android APK Artifact

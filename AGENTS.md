@@ -4,7 +4,7 @@
 ## 1. Project Tech Stack & Environment
 * **Runtime / Language:** Node.js v20+, TypeScript 5+, Rust 1.78+, Tauri v2 (with legacy Electron 30+ baseline)
 * **Framework / Host:** Vue 3 + Vite + Tailwind CSS + Naive UI + Pinia
-* **Target OS / Build Output:** Windows 10/11 x64 portable `.exe` and NSIS installer
+* **Target OS / Build Output:** Windows 10/11 x64 portable `.zip`, NSIS setup `.exe`, & `.msi` installer; Android `arm64` signed release `.apk`. Every cloud release binary uses the self-identifying naming scheme `MusicManager-Rust-Tauri-v<Version>-branch-<BranchSlug>-<ShortSHA>-<Type>.<ext>` across all deduplicated branches.
 * **Local Media Tools:** Bundled `yt-dlp` and `ffmpeg` in `resources/bin/` (orchestrated asynchronously via Tokio in Rust)
 
 ## 2. Mandatory Verification & Build Commands

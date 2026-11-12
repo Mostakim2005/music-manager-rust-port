@@ -274,3 +274,11 @@ flowchart LR
 * **Why This Trap Exists (Plain English):** Android 11+ strictly enforces APK Signature Scheme v2 for apps targeting API 30+. An unsigned release APK fails tap-to-install on Android with `INSTALL_PARSE_FAILED_NO_CERTIFICATES` ("App not installed: The package appears to be corrupt").
 * **Protected Code Anchors (Grep Targets):**
   * `.github/workflows/android.yml` -> `Align and Sign Release APK`
+
+### [TRAP: Self-Identifying-Release-Binaries] | Aliases: release naming, branch identification, engine disambiguation
+> **1-Line Summary:** ALL release executables MUST follow `MusicManager-Rust-Tauri-v<Version>-branch-<BranchSlug>-<ShortSHA>-<Type>.<ext>` to avoid multi-repo/multi-branch ambiguity.
+* **Strict Rule:** **NEVER** publish release binaries with generic names like `Music.Manager_2.0.0_x64-setup.exe` or `MusicManager-v2.0.0-Windows-Portable.zip`. Every artifact MUST explicitly state engine (`Rust-Tauri`), version, branch, short commit SHA, and artifact type (`Portable.zip`, `Setup.exe`, `x64.msi`, `Android-Universal.apk`).
+* **Why This Trap Exists (Plain English):** When parallel ports (Electron vs Tauri) and multiple branches exist, users cannot tell which engine or branch an executable was compiled from. Self-identifying filenames eliminate ambiguity.
+* **Protected Code Anchors (Grep Targets):**
+  * `.github/workflows/release.yml` -> `discover-branches` and `Standardize Self-Identifying Binary Names`
+  * `.github/workflows/android.yml` -> `Align and Sign Release APK`
